@@ -84,12 +84,25 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px}
 /* ---------- 목록 카드 ---------- */
 .card{
   position:relative; background:var(--paper); border:1px solid var(--line);
-  border-radius:var(--radius); padding:13px 14px 13px 18px; margin-bottom:9px; cursor:pointer;
+  border-radius:var(--radius); padding:13px 13px 13px 18px; margin-bottom:9px; cursor:pointer;
+  display:flex; align-items:center; gap:12px;
 }
+.card-main{flex:1; min-width:0}
+.card-right{
+  flex:0 0 104px; text-align:center; border-radius:9px; padding:11px 6px;
+  background:#f1f3f7; color:#5a6373;
+}
+.card-right b{display:block; font-size:15px; font-weight:800; letter-spacing:-.4px; line-height:1.2}
+.card-right span{display:block; font-size:11px; margin-top:3px; opacity:.8; font-weight:600}
+.rt-ok{background:#dcfce7; color:#15803d}
+.rt-bad{background:#fee2e2; color:#b91c1c}
+.rt-wait{background:#fef3c7; color:#92620a}
+.rt-prog{background:#dbeafe; color:#1d4ed8}
 .card:hover{border-color:#b9c1cd}
 .card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
   border-radius:var(--radius) 0 0 var(--radius); background:var(--bar,#c9cfd8)}
 .card-top{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap}
+.card-top:empty{display:none}
 .card h3{margin:0 0 6px; font-size:15.5px; font-weight:650; letter-spacing:-.2px; line-height:1.35}
 .card .meta{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap}
 .chip{font-size:11.5px; font-weight:700; padding:2.5px 7px; border-radius:5px; letter-spacing:-.2px}
@@ -391,25 +404,36 @@ function render(){
     const rep = latestReport(p.id);
     const badge = n === -1 ? `<span class="badge-n">NEW</span>`
                 : n > 0    ? `<span class="badge-n">${n}</span>` : "";
-    const repChip = rep
-      ? `<span class="chip ${rep.result === "done" ? "chip-ok" : "chip-urgent"}">${RESULT[rep.result]}</span>`
-      : "";
+
+    let big, sub, rtCls;
+    if(rep){
+      big = RESULT[rep.result];
+      sub = st.label;
+      rtCls = rep.result === "done" ? "rt-ok" : "rt-bad";
+    } else {
+      big = st.label;
+      sub = "보고 없음";
+      rtCls = p.status === "rejected" ? "rt-bad" : p.status === "read" ? "rt-prog" : "rt-wait";
+    }
+    if(p.status === "confirmed"){ sub = "완료"; rtCls = "rt-ok"; }
+
     return `<div class="card" data-id="${p.id}" style="--bar:${late ? '#c2352b' : st.bar}">
-      <div class="card-top">
-        <span class="st ${st.cls}">${st.label}</span>
-        ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
-        ${repChip}
-        ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
-        ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
-        ${badge}
+      <div class="card-main">
+        <div class="card-top">
+          ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
+          ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
+          ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
+          ${badge}
+        </div>
+        <h3>${esc(p.title)}</h3>
+        <div class="meta tnum">
+          <span>${esc(nameOf(p.author_id))}</span>
+          <span>${fmt(p.created_at)}</span>
+          ${p.due_at ? `<span>기한 ${fmt(p.due_at)}</span>` : ""}
+          ${rep ? `<span>보고 ${esc(nameOf(rep.reporter_id))} ${fmt(rep.reported_at)}</span>` : ""}
+        </div>
       </div>
-      <h3>${esc(p.title)}</h3>
-      <div class="meta tnum">
-        <span>${esc(nameOf(p.author_id))}</span>
-        <span>${fmt(p.created_at)}</span>
-        ${p.due_at ? `<span>기한 ${fmt(p.due_at)}</span>` : ""}
-        ${rep ? `<span>보고 ${esc(nameOf(rep.reporter_id))} ${fmt(rep.reported_at)}</span>` : ""}
-      </div>
+      <div class="card-right ${rtCls}"><b>${big}</b><span>${sub}</span></div>
     </div>`;
   }).join("");
 
