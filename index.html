@@ -95,6 +95,7 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px}
 .chip{font-size:11.5px; font-weight:700; padding:2.5px 7px; border-radius:5px; letter-spacing:-.2px}
 .chip-cat{background:#eef1f6; color:#4a5567}
 .chip-urgent{background:var(--danger-soft); color:var(--danger)}
+.chip-ok{background:#dcfce7; color:#15803d}
 .chip-late{background:#fff1e6; color:#b45309}
 .badge-n{margin-left:auto; background:var(--danger); color:#fff; font-size:11px;
   font-weight:700; min-width:19px; height:19px; border-radius:10px;
@@ -187,12 +188,12 @@ const LOGIN_DOMAIN = "@local.co";
     <div id="banner"></div>
     <div class="toolbar">
       <select id="fStatus">
-        <option value="active">진행 중</option>
+        <option value="active">미완료 전체</option>
         <option value="all">전체</option>
-        <option value="open">접수대기</option>
-        <option value="read">열람</option>
-        <option value="reported">이행보고</option>
-        <option value="confirmed">확인완료</option>
+        <option value="open">대기</option>
+        <option value="read">진행 중</option>
+        <option value="reported">확인 요망</option>
+        <option value="confirmed">완료</option>
         <option value="rejected">반려</option>
       </select>
       <select id="fCat"><option value="">분류 전체</option></select>
@@ -250,18 +251,18 @@ const LOGIN_DOMAIN = "@local.co";
    KTS 업무 관리 시스템 — 2단계 MVP
    ============================================================ */
 const ST = {
-  open:      {label:"접수대기", cls:"st-open",      bar:"#e0a92a"},
-  read:      {label:"열람",     cls:"st-read",      bar:"#3b6fd4"},
-  reported:  {label:"이행보고", cls:"st-reported",  bar:"#7c4ddb"},
-  confirmed: {label:"확인완료", cls:"st-confirmed", bar:"#2f9e58"},
-  rejected:  {label:"반려",     cls:"st-rejected",  bar:"#c2352b"}
+  open:      {label:"대기",      cls:"st-open",      bar:"#e0a92a"},
+  read:      {label:"진행 중",   cls:"st-read",      bar:"#3b6fd4"},
+  reported:  {label:"확인 요망", cls:"st-reported",  bar:"#7c4ddb"},
+  confirmed: {label:"완료",      cls:"st-confirmed", bar:"#2f9e58"},
+  rejected:  {label:"반려",      cls:"st-rejected",  bar:"#c2352b"}
 };
 const RESULT = {done:"이행완료", partial:"부분이행", unable:"미이행"};
 const ACTIVE = ["open","read","reported","rejected"];
 
 let sb = null, me = null;
 let PROFILES = {}, CATS = [], POSTS = [], READS = {}, COMMENTS = [], REPORTS = [];
-let currentPost = null;
+let currentPost = null, currentReport = null;
 
 const $  = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
@@ -347,7 +348,7 @@ async function loadList(){
     sb.from("posts").select("*").order("created_at", {ascending:false}).limit(300),
     sb.from("post_reads").select("*").eq("user_id", me.id),
     sb.from("comments").select("post_id,author_id,created_at"),
-    sb.from("reports").select("post_id,reporter_id,reported_at")
+    sb.from("reports").select("post_id,reporter_id,reported_at,result")
   ]);
   POSTS = pr.data || []; COMMENTS = cm.data || []; REPORTS = rp.data || [];
   READS = {}; (rd.data || []).forEach(r => READS[r.post_id] = r);
@@ -362,6 +363,12 @@ function unreadCount(p){
   COMMENTS.forEach(c => { if(c.post_id===p.id && c.author_id!==me.id && new Date(c.created_at)>seen) n++; });
   REPORTS .forEach(c => { if(c.post_id===p.id && c.reporter_id!==me.id && new Date(c.reported_at)>seen) n++; });
   return n;
+}
+
+function latestReport(pid){
+  const rs = REPORTS.filter(r => r.post_id === pid)
+    .sort((a,b) => new Date(a.reported_at) - new Date(b.reported_at));
+  return rs.length ? rs[rs.length-1] : null;
 }
 
 function render(){
@@ -381,12 +388,17 @@ function render(){
   $("list").innerHTML = rows.map(p => {
     const st = ST[p.status], cat = CATS.find(c => c.id === p.category_id);
     const n = unreadCount(p), late = isOverdue(p);
+    const rep = latestReport(p.id);
     const badge = n === -1 ? `<span class="badge-n">NEW</span>`
                 : n > 0    ? `<span class="badge-n">${n}</span>` : "";
+    const repChip = rep
+      ? `<span class="chip ${rep.result === "done" ? "chip-ok" : "chip-urgent"}">${RESULT[rep.result]}</span>`
+      : "";
     return `<div class="card" data-id="${p.id}" style="--bar:${late ? '#c2352b' : st.bar}">
       <div class="card-top">
         <span class="st ${st.cls}">${st.label}</span>
         ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
+        ${repChip}
         ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
         ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
         ${badge}
@@ -396,6 +408,7 @@ function render(){
         <span>${esc(nameOf(p.author_id))}</span>
         <span>${fmt(p.created_at)}</span>
         ${p.due_at ? `<span>기한 ${fmt(p.due_at)}</span>` : ""}
+        ${rep ? `<span>보고 ${esc(nameOf(rep.reporter_id))} ${fmt(rep.reported_at)}</span>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -435,6 +448,7 @@ async function markRead(id){
 
 function drawDetail(comments, reports){
   const p = currentPost, st = ST[p.status];
+  currentReport = reports.length ? reports[reports.length-1] : null;
   const cat = CATS.find(c => c.id === p.category_id);
   const late = isOverdue(p);
 
@@ -468,6 +482,7 @@ function drawDetail(comments, reports){
     : `<p class="note">아직 보고가 없습니다.</p>`;
 
   if(!isCatering() && p.status !== "confirmed"){
+    const ex = currentReport;
     h += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
       <div class="field"><label for="rRes">이행 결과</label>
         <select id="rRes">
@@ -476,10 +491,12 @@ function drawDetail(comments, reports){
           <option value="unable">미이행</option>
         </select></div>
       <div class="field"><label for="rCmt">이행 내용</label>
-        <textarea id="rCmt" style="min-height:80px" placeholder="조치한 내용을 적어주세요"></textarea></div>
-      <div class="field hidden" id="rReasonWrap"><label for="rReason">사유</label>
-        <input id="rReason" placeholder="완료하지 못한 이유"></div>
-      <button class="btn btn-primary" id="rSave">보고 등록</button>
+        <textarea id="rCmt" style="min-height:80px" placeholder="조치한 내용을 적어주세요">${esc(ex?.comment || "")}</textarea></div>
+      <div class="field ${ex && ex.result !== "done" ? "" : "hidden"}" id="rReasonWrap">
+        <label for="rReason">사유</label>
+        <input id="rReason" placeholder="완료하지 못한 이유" value="${esc(ex?.reason || "")}"></div>
+      <button class="btn btn-primary" id="rSave">${ex ? "보고 수정" : "보고 등록"}</button>
+      ${ex ? `<p class="note" style="margin:9px 0 0">이미 등록된 보고를 수정합니다. 지시 1건당 보고는 1건만 남습니다.</p>` : ""}
     </div>`;
   }
   h += `</div>`;
@@ -510,8 +527,10 @@ function drawDetail(comments, reports){
   $("dBody").innerHTML = h;
 
   const res = $("rRes");
-  if(res) res.onchange = () =>
-    $("rReasonWrap").classList.toggle("hidden", res.value === "done");
+  if(res){
+    if(currentReport) res.value = currentReport.result;
+    res.onchange = () => $("rReasonWrap").classList.toggle("hidden", res.value === "done");
+  }
   if($("rSave")) $("rSave").onclick = saveReport;
   if($("cOk"))   $("cOk").onclick   = () => decide("confirmed");
   if($("cNo"))   $("cNo").onclick   = () => decide("rejected");
@@ -524,10 +543,13 @@ async function saveReport(){
   const reason = $("rReason") ? $("rReason").value.trim() : "";
   if(result !== "done" && !reason){ alert("사유를 입력하세요."); return; }
   $("rSave").disabled = true;
-  const {error} = await sb.from("reports").insert({
-    post_id: currentPost.id, reporter_id: me.id, result,
-    comment: comment || null, reason: reason || null
-  });
+  const payload = {
+    result, comment: comment || null, reason: result === "done" ? null : reason,
+    reporter_id: me.id, reported_at: new Date().toISOString()
+  };
+  const {error} = currentReport
+    ? await sb.from("reports").update(payload).eq("id", currentReport.id)
+    : await sb.from("reports").insert({post_id: currentPost.id, ...payload});
   $("rSave").disabled = false;
   if(error){ alert("등록하지 못했습니다: " + error.message); return; }
   await refreshDetail();
