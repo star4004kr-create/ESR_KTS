@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KTS 업무 관리 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --ink:#15181e; --paper:#fff; --bg:#eceff4; --line:#d9dee6; --muted:#69707d;
+  --brand:#1e3a5f; --brand-soft:#e8eef6;
+  --danger:#b3261e; --danger-soft:#fdecea;
+  --radius:10px;
+  --f-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--f-sans); background:var(--bg); color:var(--ink);
+  font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none !important}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ---------- 공통 요소 ---------- */
+.btn{
+  border:1px solid var(--line); background:var(--paper); border-radius:8px;
+  padding:9px 14px; font-weight:600; font-size:14px;
+}
+.btn:hover{border-color:#b9c1cd}
+.btn-primary{background:var(--brand); border-color:var(--brand); color:#fff}
+.btn-primary:hover{background:#16304f}
+.btn-danger{background:var(--danger-soft); border-color:#f0c4c0; color:var(--danger)}
+.btn-sm{padding:6px 10px; font-size:13px}
+.btn:disabled{opacity:.5; cursor:default}
+.field{margin-bottom:14px}
+.field label{display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:5px}
+.field input,.field select,.field textarea{
+  width:100%; padding:10px 11px; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper);
+}
+.field textarea{min-height:130px; resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:2px solid var(--brand); outline-offset:-1px; border-color:var(--brand);
+}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.note{font-size:13px; color:var(--muted)}
+.err{color:var(--danger); font-size:14px; margin-top:10px; min-height:20px}
+
+/* ---------- 로그인 ---------- */
+#login{min-height:100dvh; display:grid; place-items:center; padding:24px}
+.login-card{width:100%; max-width:360px; background:var(--paper);
+  border:1px solid var(--line); border-radius:14px; padding:28px}
+.login-card h1{font-size:19px; margin:0 0 4px; letter-spacing:-.3px}
+.login-card p.sub{margin:0 0 22px; font-size:13px; color:var(--muted)}
+.id-wrap{display:flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); overflow:hidden}
+.id-wrap input{border:0 !important; border-radius:0 !important; flex:1}
+.id-wrap input:focus{outline:none}
+.id-wrap span{padding:0 11px; font-size:13px; color:var(--muted); background:#f4f6f9;
+  border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center}
+
+/* ---------- 헤더 ---------- */
+header{
+  position:sticky; top:0; z-index:20; background:var(--brand); color:#fff;
+  padding:12px 16px; display:flex; align-items:center; gap:10px;
+  padding-top:calc(12px + env(safe-area-inset-top));
+}
+header h1{font-size:16px; margin:0; font-weight:700; letter-spacing:-.3px; flex:1}
+header .who{font-size:12px; opacity:.85; white-space:nowrap}
+header button{background:rgba(255,255,255,.14); border:0; color:#fff;
+  border-radius:7px; padding:6px 10px; font-size:13px}
+header button:hover{background:rgba(255,255,255,.25)}
+
+/* ---------- 레이아웃 ---------- */
+main{max-width:860px; margin:0 auto; padding:14px 14px 60px}
+.toolbar{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+.toolbar select,.toolbar input{padding:8px 10px; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); font-size:14px}
+.toolbar input{flex:1; min-width:120px}
+
+/* ---------- 목록 카드 ---------- */
+.card{
+  position:relative; background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); padding:13px 14px 13px 18px; margin-bottom:9px; cursor:pointer;
+}
+.card:hover{border-color:#b9c1cd}
+.card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+  border-radius:var(--radius) 0 0 var(--radius); background:var(--bar,#c9cfd8)}
+.card-top{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap}
+.card h3{margin:0 0 6px; font-size:15.5px; font-weight:650; letter-spacing:-.2px; line-height:1.35}
+.card .meta{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap}
+.chip{font-size:11.5px; font-weight:700; padding:2.5px 7px; border-radius:5px; letter-spacing:-.2px}
+.chip-cat{background:#eef1f6; color:#4a5567}
+.chip-urgent{background:var(--danger-soft); color:var(--danger)}
+.chip-late{background:#fff1e6; color:#b45309}
+.badge-n{margin-left:auto; background:var(--danger); color:#fff; font-size:11px;
+  font-weight:700; min-width:19px; height:19px; border-radius:10px;
+  display:inline-flex; align-items:center; justify-content:center; padding:0 6px}
+.empty{text-align:center; color:var(--muted); padding:56px 20px; font-size:14px}
+
+/* ---------- 상세 ---------- */
+#detail,#write{position:fixed; inset:0; background:var(--bg); z-index:30; overflow-y:auto}
+.sheet{max-width:860px; margin:0 auto; padding:14px 14px 70px}
+.sheet-bar{position:sticky; top:0; background:var(--bg); padding:12px 0 10px;
+  display:flex; align-items:center; gap:10px; z-index:5;
+  padding-top:calc(12px + env(safe-area-inset-top))}
+.sheet-bar strong{font-size:15px; flex:1}
+.box{background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); padding:15px; margin-bottom:11px}
+.box h4{margin:0 0 10px; font-size:13px; color:var(--muted); font-weight:700;
+  letter-spacing:.02em}
+.detail-title{font-size:18px; font-weight:700; margin:8px 0 10px; letter-spacing:-.3px}
+.detail-body{white-space:pre-wrap; line-height:1.65; margin-top:12px;
+  padding-top:12px; border-top:1px solid var(--line)}
+dl.kv{display:grid; grid-template-columns:78px 1fr; gap:7px 12px; margin:0; font-size:13.5px}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0}
+.thread{border-top:1px solid var(--line); padding-top:11px; margin-top:11px}
+.thread:first-of-type{border-top:0; padding-top:0; margin-top:0}
+.thread .head{display:flex; gap:8px; align-items:baseline; margin-bottom:3px}
+.thread .head b{font-size:13.5px}
+.thread .head span{font-size:12px; color:var(--muted)}
+.thread p{margin:0; white-space:pre-wrap; font-size:14px}
+.actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px}
+
+/* ---------- 상태 색 ---------- */
+.st{font-size:11.5px; font-weight:700; padding:2.5px 8px; border-radius:5px}
+.st-open{background:#fef3c7; color:#92620a}
+.st-read{background:#dbeafe; color:#1d4ed8}
+.st-reported{background:#ede9fe; color:#6d28d9}
+.st-confirmed{background:#dcfce7; color:#15803d}
+.st-rejected{background:#fee2e2; color:#b91c1c}
+
+.fab{position:fixed; right:16px; bottom:calc(18px + env(safe-area-inset-bottom));
+  z-index:15; border:0; background:var(--brand); color:#fff; font-weight:700;
+  border-radius:26px; padding:14px 20px; box-shadow:0 4px 14px rgba(20,40,70,.28)}
+.banner{background:#fff4e5; border:1px solid #f0d3a8; color:#7a4c05;
+  padding:11px 14px; border-radius:8px; margin-bottom:12px; font-size:13.5px}
+@media (max-width:520px){ .row2{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:no-preference){
+  .card{transition:border-color .12s ease}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 설정 ============ -->
+<script>
+const SUPABASE_URL = "https://xgkuyyqxeijropmqrpfk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhna3V5eXF4ZWlqcm9wbXFycGZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MTIxNDcsImV4cCI6MjEwMDk4ODE0N30.xaU5nNNrrzWjFnyL84UqeZhuAbZBsT0-Vf6-cRAHBbU";
+const LOGIN_DOMAIN = "@local.co";
+</script>
+
+<!-- ============ 로그인 ============ -->
+<div id="login">
+  <div class="login-card">
+    <h1>KTS 업무 관리 시스템</h1>
+    <p class="sub">지시 등록과 이행 확인을 한 곳에서</p>
+    <div class="field">
+      <label for="lid">아이디</label>
+      <div class="id-wrap">
+        <input id="lid" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="yh.yoon">
+        <span id="ldom">@local.co</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="lpw">비밀번호</label>
+      <input id="lpw" type="password">
+    </div>
+    <button class="btn btn-primary" id="btnLogin" style="width:100%">로그인</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ============ 목록 ============ -->
+<div id="app" class="hidden">
+  <header>
+    <h1>KTS 업무 관리</h1>
+    <span class="who" id="who"></span>
+    <button id="btnPw">비밀번호</button>
+    <button id="btnOut">로그아웃</button>
+  </header>
+  <main>
+    <div id="banner"></div>
+    <div class="toolbar">
+      <select id="fStatus">
+        <option value="active">진행 중</option>
+        <option value="all">전체</option>
+        <option value="open">접수대기</option>
+        <option value="read">열람</option>
+        <option value="reported">이행보고</option>
+        <option value="confirmed">확인완료</option>
+        <option value="rejected">반려</option>
+      </select>
+      <select id="fCat"><option value="">분류 전체</option></select>
+      <input id="fQ" placeholder="제목·내용 검색">
+    </div>
+    <div id="list"></div>
+  </main>
+  <button class="fab hidden" id="fabNew">＋ 지시 등록</button>
+</div>
+
+<!-- ============ 상세 ============ -->
+<div id="detail" class="hidden"><div class="sheet">
+  <div class="sheet-bar">
+    <button class="btn btn-sm" id="dBack">← 목록</button>
+    <strong id="dNo"></strong>
+    <button class="btn btn-sm btn-danger hidden" id="dDel">삭제</button>
+  </div>
+  <div id="dBody"></div>
+</div></div>
+
+<!-- ============ 글쓰기 ============ -->
+<div id="write" class="hidden"><div class="sheet">
+  <div class="sheet-bar">
+    <button class="btn btn-sm" id="wBack">← 취소</button>
+    <strong>지시 등록</strong>
+  </div>
+  <div class="box">
+    <div class="field"><label for="wTitle">제목</label><input id="wTitle" maxlength="120"></div>
+    <div class="row2">
+      <div class="field"><label for="wCat">분류</label><select id="wCat"></select></div>
+      <div class="field"><label for="wUrg">긴급도</label>
+        <select id="wUrg"><option value="normal">일반</option><option value="urgent">긴급</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="wFlt">편명</label><input id="wFlt" placeholder="선택"></div>
+      <div class="field"><label for="wFdate">해당 일자</label><input id="wFdate" type="date"></div>
+    </div>
+    <div class="field"><label for="wDue">이행 기한</label><input id="wDue" type="datetime-local"></div>
+    <div class="field"><label for="wBody">지시 내용</label><textarea id="wBody"></textarea></div>
+    <div class="field" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="wPhoto" style="width:auto">
+      <label for="wPhoto" style="margin:0">사진 회신 필요</label>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="wSave">등록</button>
+      <button class="btn" id="wCancel">취소</button>
+    </div>
+    <div class="err" id="wErr"></div>
+  </div>
+</div></div>
+
+<script>
+/* ============================================================
+   KTS 업무 관리 시스템 — 2단계 MVP
+   ============================================================ */
+const ST = {
+  open:      {label:"접수대기", cls:"st-open",      bar:"#e0a92a"},
+  read:      {label:"열람",     cls:"st-read",      bar:"#3b6fd4"},
+  reported:  {label:"이행보고", cls:"st-reported",  bar:"#7c4ddb"},
+  confirmed: {label:"확인완료", cls:"st-confirmed", bar:"#2f9e58"},
+  rejected:  {label:"반려",     cls:"st-rejected",  bar:"#c2352b"}
+};
+const RESULT = {done:"이행완료", partial:"부분이행", unable:"미이행"};
+const ACTIVE = ["open","read","reported","rejected"];
+
+let sb = null, me = null;
+let PROFILES = {}, CATS = [], POSTS = [], READS = {}, COMMENTS = [], REPORTS = [];
+let currentPost = null;
+
+const $  = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function fmt(ts, withTime = true){
+  if(!ts) return "-";
+  const d = new Date(ts), p = n => String(n).padStart(2,"0");
+  const base = `${d.getFullYear()}.${p(d.getMonth()+1)}.${p(d.getDate())}`;
+  return withTime ? `${base} ${p(d.getHours())}:${p(d.getMinutes())}` : base;
+}
+const nameOf = id => PROFILES[id]?.name || "알 수 없음";
+const isCatering = () => me?.org === "catering";
+const isOverdue  = p => p.due_at && ACTIVE.includes(p.status) && new Date(p.due_at) < new Date();
+
+/* ---------- 초기화 ---------- */
+$("ldom").textContent = LOGIN_DOMAIN;
+
+if(SUPABASE_ANON_KEY.startsWith("여기에")){
+  $("loginErr").textContent = "설정이 필요합니다. 파일 상단 SUPABASE_ANON_KEY에 키를 입력하세요.";
+  $("btnLogin").disabled = true;
+} else {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb.auth.getSession().then(({data}) => { if(data.session) start(); });
+}
+
+/* ---------- 로그인 ---------- */
+$("btnLogin").onclick = login;
+$("lpw").onkeydown = e => { if(e.key === "Enter") login(); };
+$("lid").onkeydown = e => { if(e.key === "Enter") $("lpw").focus(); };
+
+async function login(){
+  const id = $("lid").value.trim(), pw = $("lpw").value;
+  if(!id || !pw){ $("loginErr").textContent = "아이디와 비밀번호를 입력하세요."; return; }
+  $("btnLogin").disabled = true; $("loginErr").textContent = "";
+  const email = id.includes("@") ? id : id + LOGIN_DOMAIN;
+  const {error} = await sb.auth.signInWithPassword({email, password: pw});
+  $("btnLogin").disabled = false;
+  if(error){ $("loginErr").textContent = "아이디 또는 비밀번호가 맞지 않습니다."; return; }
+  start();
+}
+
+$("btnOut").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+$("btnPw").onclick = async () => {
+  const pw = prompt("새 비밀번호를 입력하세요 (6자 이상)");
+  if(!pw) return;
+  if(pw.length < 6){ alert("6자 이상이어야 합니다."); return; }
+  const {error} = await sb.auth.updateUser({password: pw});
+  alert(error ? "변경하지 못했습니다: " + error.message : "비밀번호를 변경했습니다.");
+};
+
+/* ---------- 시작 ---------- */
+async function start(){
+  const {data:{user}} = await sb.auth.getUser();
+  const {data:prof} = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if(!prof){
+    alert("계정이 등록되지 않았습니다. 관리자에게 profiles 등록을 요청하세요.");
+    await sb.auth.signOut(); location.reload(); return;
+  }
+  me = prof;
+  $("login").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("who").textContent = `${me.name} · ${isCatering() ? "케이터링" : "도급사"}`;
+  if(isCatering()) $("fabNew").classList.remove("hidden");
+
+  const [{data:pl}, {data:cl}] = await Promise.all([
+    sb.from("profiles").select("id,name,org"),
+    sb.from("categories").select("*").eq("active", true).order("sort_order")
+  ]);
+  (pl||[]).forEach(p => PROFILES[p.id] = p);
+  CATS = cl || [];
+  const opts = CATS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("fCat").innerHTML = `<option value="">분류 전체</option>` + opts;
+  $("wCat").innerHTML = opts;
+
+  await loadList();
+}
+
+/* ---------- 목록 ---------- */
+async function loadList(){
+  const [pr, rd, cm, rp] = await Promise.all([
+    sb.from("posts").select("*").order("created_at", {ascending:false}).limit(300),
+    sb.from("post_reads").select("*").eq("user_id", me.id),
+    sb.from("comments").select("post_id,author_id,created_at"),
+    sb.from("reports").select("post_id,reporter_id,reported_at")
+  ]);
+  POSTS = pr.data || []; COMMENTS = cm.data || []; REPORTS = rp.data || [];
+  READS = {}; (rd.data || []).forEach(r => READS[r.post_id] = r);
+  render();
+}
+
+function unreadCount(p){
+  const r = READS[p.id];
+  if(!r) return -1;                       // -1 = 한 번도 안 봄
+  const seen = new Date(r.last_seen_at || r.read_at);
+  let n = 0;
+  COMMENTS.forEach(c => { if(c.post_id===p.id && c.author_id!==me.id && new Date(c.created_at)>seen) n++; });
+  REPORTS .forEach(c => { if(c.post_id===p.id && c.reporter_id!==me.id && new Date(c.reported_at)>seen) n++; });
+  return n;
+}
+
+function render(){
+  const fs = $("fStatus").value, fc = $("fCat").value, q = $("fQ").value.trim().toLowerCase();
+  const rows = POSTS.filter(p => {
+    if(fs === "active" && !ACTIVE.includes(p.status)) return false;
+    if(fs !== "active" && fs !== "all" && p.status !== fs) return false;
+    if(fc && String(p.category_id) !== fc) return false;
+    if(q && !((p.title||"") + (p.body||"")).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if(!rows.length){
+    $("list").innerHTML = `<div class="empty">해당하는 지시가 없습니다.</div>`;
+    return;
+  }
+  $("list").innerHTML = rows.map(p => {
+    const st = ST[p.status], cat = CATS.find(c => c.id === p.category_id);
+    const n = unreadCount(p), late = isOverdue(p);
+    const badge = n === -1 ? `<span class="badge-n">NEW</span>`
+                : n > 0    ? `<span class="badge-n">${n}</span>` : "";
+    return `<div class="card" data-id="${p.id}" style="--bar:${late ? '#c2352b' : st.bar}">
+      <div class="card-top">
+        <span class="st ${st.cls}">${st.label}</span>
+        ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
+        ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
+        ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
+        ${badge}
+      </div>
+      <h3>${esc(p.title)}</h3>
+      <div class="meta tnum">
+        <span>${esc(nameOf(p.author_id))}</span>
+        <span>${fmt(p.created_at)}</span>
+        ${p.due_at ? `<span>기한 ${fmt(p.due_at)}</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+
+  $("list").querySelectorAll(".card").forEach(el =>
+    el.onclick = () => openDetail(Number(el.dataset.id)));
+}
+
+$("fStatus").onchange = render;
+$("fCat").onchange = render;
+$("fQ").oninput = render;
+
+/* ---------- 상세 ---------- */
+async function openDetail(id){
+  currentPost = POSTS.find(p => p.id === id);
+  if(!currentPost) return;
+  $("detail").classList.remove("hidden");
+  $("dNo").textContent = `#${id}`;
+  $("dDel").classList.toggle("hidden", !isCatering());
+  $("dBody").innerHTML = `<div class="empty">불러오는 중…</div>`;
+  window.scrollTo(0,0);
+
+  const [cm, rp] = await Promise.all([
+    sb.from("comments").select("*").eq("post_id", id).order("created_at"),
+    sb.from("reports").select("*").eq("post_id", id).order("reported_at")
+  ]);
+  drawDetail(cm.data || [], rp.data || []);
+  await markRead(id);
+}
+
+async function markRead(id){
+  const {error} = await sb.from("post_reads").insert({post_id:id, user_id:me.id});
+  if(error) await sb.from("post_reads")
+    .update({last_seen_at:new Date().toISOString()})
+    .eq("post_id", id).eq("user_id", me.id);
+}
+
+function drawDetail(comments, reports){
+  const p = currentPost, st = ST[p.status];
+  const cat = CATS.find(c => c.id === p.category_id);
+  const late = isOverdue(p);
+
+  let h = `<div class="box">
+    <div class="card-top">
+      <span class="st ${st.cls}">${st.label}</span>
+      ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
+      ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
+      ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
+    </div>
+    <div class="detail-title">${esc(p.title)}</div>
+    <dl class="kv tnum">
+      <dt>작성</dt><dd>${esc(nameOf(p.author_id))} · ${fmt(p.created_at)}</dd>
+      ${p.due_at ? `<dt>이행 기한</dt><dd>${fmt(p.due_at)}</dd>` : ""}
+      ${p.flight_no ? `<dt>편명</dt><dd>${esc(p.flight_no)}</dd>` : ""}
+      ${p.flight_date ? `<dt>해당 일자</dt><dd>${fmt(p.flight_date,false)}</dd>` : ""}
+      ${p.photo_required ? `<dt>회신</dt><dd>사진 필요</dd>` : ""}
+      ${p.reject_reason ? `<dt>반려 사유</dt><dd>${esc(p.reject_reason)}</dd>` : ""}
+    </dl>
+    <div class="detail-body">${esc(p.body)}</div>
+  </div>`;
+
+  /* 이행보고 */
+  h += `<div class="box"><h4>이행 보고</h4>`;
+  h += reports.length ? reports.map(r => `<div class="thread">
+      <div class="head"><b>${esc(nameOf(r.reporter_id))}</b>
+        <span>${RESULT[r.result]} · ${fmt(r.reported_at)}</span></div>
+      ${r.comment ? `<p>${esc(r.comment)}</p>` : ""}
+      ${r.reason ? `<p style="color:var(--danger)">사유: ${esc(r.reason)}</p>` : ""}
+    </div>`).join("")
+    : `<p class="note">아직 보고가 없습니다.</p>`;
+
+  if(!isCatering() && p.status !== "confirmed"){
+    h += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="field"><label for="rRes">이행 결과</label>
+        <select id="rRes">
+          <option value="done">이행완료</option>
+          <option value="partial">부분이행</option>
+          <option value="unable">미이행</option>
+        </select></div>
+      <div class="field"><label for="rCmt">이행 내용</label>
+        <textarea id="rCmt" style="min-height:80px" placeholder="조치한 내용을 적어주세요"></textarea></div>
+      <div class="field hidden" id="rReasonWrap"><label for="rReason">사유</label>
+        <input id="rReason" placeholder="완료하지 못한 이유"></div>
+      <button class="btn btn-primary" id="rSave">보고 등록</button>
+    </div>`;
+  }
+  h += `</div>`;
+
+  /* 케이터링 확인 */
+  if(isCatering() && p.status !== "confirmed"){
+    h += `<div class="box"><h4>확인 처리</h4>
+      <div class="actions">
+        <button class="btn btn-primary" id="cOk">확인완료</button>
+        <button class="btn btn-danger" id="cNo">반려</button>
+      </div>
+      <p class="note" style="margin:10px 0 0">확인완료 시 진행 중 목록에서 빠집니다.</p>
+    </div>`;
+  }
+
+  /* 특이사항 */
+  h += `<div class="box"><h4>특이사항 · 활동 기록</h4>`;
+  h += comments.length ? comments.map(c => `<div class="thread">
+      <div class="head"><b>${esc(nameOf(c.author_id))}</b><span>${fmt(c.created_at)}</span></div>
+      <p>${esc(c.body)}</p></div>`).join("")
+    : `<p class="note">등록된 내용이 없습니다.</p>`;
+  h += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="field"><textarea id="cBody" style="min-height:70px"
+        placeholder="특이사항이나 진행 상황을 남겨주세요"></textarea></div>
+      <button class="btn" id="cSave">등록</button>
+    </div></div>`;
+
+  $("dBody").innerHTML = h;
+
+  const res = $("rRes");
+  if(res) res.onchange = () =>
+    $("rReasonWrap").classList.toggle("hidden", res.value === "done");
+  if($("rSave")) $("rSave").onclick = saveReport;
+  if($("cOk"))   $("cOk").onclick   = () => decide("confirmed");
+  if($("cNo"))   $("cNo").onclick   = () => decide("rejected");
+  $("cSave").onclick = saveComment;
+}
+
+async function saveReport(){
+  const result = $("rRes").value;
+  const comment = $("rCmt").value.trim();
+  const reason = $("rReason") ? $("rReason").value.trim() : "";
+  if(result !== "done" && !reason){ alert("사유를 입력하세요."); return; }
+  $("rSave").disabled = true;
+  const {error} = await sb.from("reports").insert({
+    post_id: currentPost.id, reporter_id: me.id, result,
+    comment: comment || null, reason: reason || null
+  });
+  $("rSave").disabled = false;
+  if(error){ alert("등록하지 못했습니다: " + error.message); return; }
+  await refreshDetail();
+}
+
+async function decide(status){
+  let reason = null;
+  if(status === "rejected"){
+    reason = prompt("반려 사유를 입력하세요");
+    if(!reason) return;
+  }
+  const {error} = await sb.from("posts").update({
+    status, reject_reason: reason,
+    closed_at: status === "confirmed" ? new Date().toISOString() : null
+  }).eq("id", currentPost.id);
+  if(error){ alert("처리하지 못했습니다: " + error.message); return; }
+  await refreshDetail();
+}
+
+async function saveComment(){
+  const body = $("cBody").value.trim();
+  if(!body) return;
+  $("cSave").disabled = true;
+  const {error} = await sb.from("comments")
+    .insert({post_id: currentPost.id, author_id: me.id, body});
+  $("cSave").disabled = false;
+  if(error){ alert("등록하지 못했습니다: " + error.message); return; }
+  await refreshDetail();
+}
+
+async function refreshDetail(){
+  const id = currentPost.id;
+  const {data} = await sb.from("posts").select("*").eq("id", id).single();
+  currentPost = data;
+  const idx = POSTS.findIndex(p => p.id === id);
+  if(idx >= 0) POSTS[idx] = data;
+  const [cm, rp] = await Promise.all([
+    sb.from("comments").select("*").eq("post_id", id).order("created_at"),
+    sb.from("reports").select("*").eq("post_id", id).order("reported_at")
+  ]);
+  drawDetail(cm.data || [], rp.data || []);
+  await markRead(id);
+}
+
+$("dBack").onclick = async () => {
+  $("detail").classList.add("hidden");
+  await loadList();
+};
+$("dDel").onclick = async () => {
+  if(!confirm("이 지시를 삭제할까요? 보고와 댓글도 함께 삭제됩니다.")) return;
+  const {error} = await sb.from("posts").delete().eq("id", currentPost.id);
+  if(error){ alert("삭제하지 못했습니다: " + error.message); return; }
+  $("detail").classList.add("hidden");
+  await loadList();
+};
+
+/* ---------- 글쓰기 ---------- */
+$("fabNew").onclick = () => {
+  ["wTitle","wFlt","wFdate","wDue","wBody"].forEach(k => $(k).value = "");
+  $("wPhoto").checked = false; $("wUrg").value = "normal"; $("wErr").textContent = "";
+  $("write").classList.remove("hidden"); window.scrollTo(0,0);
+};
+$("wBack").onclick = $("wCancel").onclick = () => $("write").classList.add("hidden");
+
+$("wSave").onclick = async () => {
+  const title = $("wTitle").value.trim(), body = $("wBody").value.trim();
+  if(!title || !body){ $("wErr").textContent = "제목과 지시 내용은 필수입니다."; return; }
+  $("wSave").disabled = true;
+  const {error} = await sb.from("posts").insert({
+    title, body,
+    category_id: Number($("wCat").value) || null,
+    urgency: $("wUrg").value,
+    flight_no: $("wFlt").value.trim() || null,
+    flight_date: $("wFdate").value || null,
+    due_at: $("wDue").value ? new Date($("wDue").value).toISOString() : null,
+    photo_required: $("wPhoto").checked,
+    author_id: me.id
+  });
+  $("wSave").disabled = false;
+  if(error){ $("wErr").textContent = "등록하지 못했습니다: " + error.message; return; }
+  $("write").classList.add("hidden");
+  await loadList();
+};
+</script>
+</body>
+</html>
