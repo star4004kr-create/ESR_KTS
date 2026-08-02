@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KTS 업무 관리 시스템</title>
+<meta name="theme-color" content="#1e3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KTS 업무관리">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -55,16 +62,11 @@ button{cursor:pointer}
   border:1px solid var(--line); border-radius:14px; padding:28px}
 .login-card h1{font-size:19px; margin:0 0 4px; letter-spacing:-.3px}
 .login-card p.sub{margin:0 0 22px; font-size:13px; color:var(--muted)}
-.id-wrap{display:flex; align-items:center; border:1px solid var(--line);
-  border-radius:8px; background:var(--paper); overflow:hidden}
-.id-wrap input{border:0 !important; border-radius:0 !important; flex:1}
-.id-wrap input:focus{outline:none}
-.id-wrap span{padding:0 11px; font-size:13px; color:var(--muted); background:#f4f6f9;
-  border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center}
 
 /* ---------- 헤더 ---------- */
 header{
-  position:sticky; top:0; z-index:20; background:var(--brand); color:#fff;
+  position:fixed; top:0; left:0; right:0; z-index:40;
+  background:var(--brand); color:#fff;
   padding:12px 16px; display:flex; align-items:center; gap:10px;
   padding-top:calc(12px + env(safe-area-inset-top));
 }
@@ -75,11 +77,51 @@ header button{background:rgba(255,255,255,.14); border:0; color:#fff;
 header button:hover{background:rgba(255,255,255,.25)}
 
 /* ---------- 레이아웃 ---------- */
-main{max-width:860px; margin:0 auto; padding:14px 14px 60px}
+main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
+  padding-top:calc(14px + var(--hh,56px))}
 .toolbar{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:8px 10px; border:1px solid var(--line);
   border-radius:8px; background:var(--paper); font-size:14px}
 .toolbar input{flex:1; min-width:120px}
+
+/* ---------- 월 필터 ---------- */
+.mbar{display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap}
+.mnav{display:flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); overflow:hidden}
+.mnav button{border:0; background:transparent; padding:8px 13px; font-size:13px; line-height:1.2}
+.mnav button:hover:not(:disabled){background:#eef1f6}
+.mnav button:disabled{opacity:.25; cursor:default}
+.mnav b{font-size:14px; font-weight:700; min-width:92px; text-align:center;
+  letter-spacing:-.2px; padding:0 2px}
+.btn-now{padding:8px 11px; border:1px solid var(--line); border-radius:8px;
+  background:var(--paper); font-size:13px; font-weight:600; color:var(--muted)}
+.btn-now:hover{border-color:#b9c1cd}
+.carry{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted);
+  padding:8px 11px; border:1px solid var(--line); border-radius:8px;
+  background:var(--paper); cursor:pointer; user-select:none}
+.carry input{width:15px; height:15px; margin:0; accent-color:var(--brand); cursor:pointer}
+.chip-carry{background:#e0e7ff; color:#3730a3}
+.chip-file{background:#eef1f6; color:#4a5567}
+
+/* ---------- 첨부 ---------- */
+.att-list{margin-top:10px; border-top:1px solid var(--line)}
+.att-list:empty{display:none}
+.att{display:flex; align-items:center; gap:9px; padding:9px 2px;
+  border-bottom:1px solid var(--line)}
+.att:last-child{border-bottom:0}
+.att .ic{flex:0 0 22px; text-align:center; font-size:15px}
+.att a{flex:1; min-width:0; font-size:14px; color:var(--brand); text-decoration:none;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.att a:hover{text-decoration:underline}
+.att .up{font-size:11.5px; color:var(--muted); white-space:nowrap}
+.att .del{border:0; background:transparent; color:var(--muted); font-size:16px;
+  padding:0 4px; line-height:1}
+.att .del:hover{color:var(--danger)}
+.att-pick{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px}
+.att-pick input[type=file]{font-size:13px; max-width:100%}
+.att-hint{font-size:12px; color:var(--muted); margin:6px 0 0}
+.att-queue{font-size:12.5px; color:var(--muted); margin:6px 0 0}
+.att-queue b{color:var(--ink); font-weight:600}
 
 /* ---------- 목록 카드 ---------- */
 .card{
@@ -110,22 +152,71 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px}
 .chip-urgent{background:var(--danger-soft); color:var(--danger)}
 .chip-ok{background:#dcfce7; color:#15803d}
 .chip-late{background:#fff1e6; color:#b45309}
+.chip-soon{background:#fef3c7; color:#92620a}
 .badge-n{margin-left:auto; background:var(--danger); color:#fff; font-size:11px;
   font-weight:700; min-width:19px; height:19px; border-radius:10px;
   display:inline-flex; align-items:center; justify-content:center; padding:0 6px}
 .empty{text-align:center; color:var(--muted); padding:56px 20px; font-size:14px}
 
 /* ---------- 상세 ---------- */
-#detail,#write{position:fixed; inset:0; background:var(--bg); z-index:30; overflow-y:auto}
+/* 상단 헤더는 항상 보이도록, 겹치지 않게 그 아래에서 시작한다 */
+#detail,#write,#stat,#acct{position:fixed; top:var(--hh,56px); left:0; right:0; bottom:0;
+  background:var(--bg); z-index:30; overflow-y:auto}
+
+/* ---------- 계정 관리 ---------- */
+.acct-row{display:grid; grid-template-columns:1fr auto; gap:8px 12px;
+  padding:12px 0; border-bottom:1px solid var(--line); align-items:center}
+.acct-row:last-child{border-bottom:0}
+.acct-row .nm{font-weight:650; font-size:15px}
+.acct-row .sub{font-size:12.5px; color:var(--muted); margin-top:2px}
+.acct-row .sub b{color:var(--ink); font-weight:600}
+.tag{font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:5px}
+.tag-adm{background:#ede9fe; color:#6d28d9}
+.tag-off{background:#fee2e2; color:#b91c1c}
+.acct-grp{font-size:12px; color:var(--muted); font-weight:700; margin:14px 0 2px}
+.acct-grp:first-child{margin-top:0}
+.acct-editing{background:var(--brand-soft); border-radius:8px;
+  padding:14px 12px 4px; margin:6px 0}
+.acct-editing .field{margin-bottom:12px}
+
+/* ---------- 통계 표 ---------- */
+table.stat{width:100%; border-collapse:collapse; font-size:14px}
+table.stat th,table.stat td{padding:9px 10px; border-bottom:1px solid var(--line)}
+table.stat th{font-size:12.5px; color:var(--muted); font-weight:700; text-align:right;
+  background:#f4f6f9; white-space:nowrap}
+table.stat th:first-child{text-align:left}
+table.stat td{text-align:right; font-variant-numeric:tabular-nums}
+table.stat td:first-child{text-align:left; font-weight:600}
+table.stat tr.sum td{border-top:2px solid var(--line); border-bottom:0;
+  font-weight:800; background:#f4f6f9}
+table.stat td.open-n{color:var(--danger); font-weight:800}
+table.stat td.zero{color:var(--muted)}
+
+/* ---------- 로그 이력 ---------- */
+.log{position:relative; padding:0 0 14px 20px; border-left:2px solid var(--line)}
+.log:last-child{padding-bottom:0; border-left-color:transparent}
+.log::before{content:""; position:absolute; left:-6px; top:3px; width:10px; height:10px;
+  border-radius:50%; background:var(--lg,#b9c1cd); box-shadow:0 0 0 2px var(--paper)}
+.log .lt{font-size:13.5px; line-height:1.5}
+.log .lt b{font-weight:700}
+.log .lm{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:1px}
+.log .ld{font-size:12.5px; color:var(--danger); margin-top:2px}
+.log-end{margin-top:2px; padding:9px 11px; background:#f1f5f2; border-radius:8px;
+  font-size:12.5px; color:#2f6b45}
+.unread{margin-top:12px; padding:10px 12px; background:#fff4e5; border:1px solid #f0d3a8;
+  border-radius:8px; font-size:13px; color:#7a4c05}
+.unread b{display:block; font-size:12px; margin-bottom:3px; opacity:.85}
 .sheet{max-width:860px; margin:0 auto; padding:14px 14px 70px}
 .sheet-bar{position:sticky; top:0; background:var(--bg); padding:12px 0 10px;
-  display:flex; align-items:center; gap:10px; z-index:5;
-  padding-top:calc(12px + env(safe-area-inset-top))}
+  display:flex; align-items:center; gap:10px; z-index:5}
 .sheet-bar strong{font-size:15px; flex:1}
 .box{background:var(--paper); border:1px solid var(--line);
   border-radius:var(--radius); padding:15px; margin-bottom:11px}
 .box h4{margin:0 0 10px; font-size:13px; color:var(--muted); font-weight:700;
   letter-spacing:.02em}
+.box-head{display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:10px}
+.box-head h4{margin:0}
 .detail-title{font-size:18px; font-weight:700; margin:8px 0 10px; letter-spacing:-.3px}
 .detail-body{white-space:pre-wrap; line-height:1.65; margin-top:12px;
   padding-top:12px; border-top:1px solid var(--line)}
@@ -153,7 +244,14 @@ dl.kv dd{margin:0}
   border-radius:26px; padding:14px 20px; box-shadow:0 4px 14px rgba(20,40,70,.28)}
 .banner{background:#fff4e5; border:1px solid #f0d3a8; color:#7a4c05;
   padding:11px 14px; border-radius:8px; margin-bottom:12px; font-size:13.5px}
+.banner-warn{background:var(--danger-soft); border-color:#f0c4c0; color:#8a2019}
+.banner b{display:inline-block; margin-right:4px}
 @media (max-width:520px){ .row2{grid-template-columns:1fr} }
+@media (max-width:480px){
+  header h1{font-size:14px}
+  header .who{display:none}
+  header button{padding:6px 8px; font-size:12px}
+}
 @media (prefers-reduced-motion:no-preference){
   .card{transition:border-color .12s ease}
 }
@@ -166,19 +264,19 @@ dl.kv dd{margin:0}
 const SUPABASE_URL = "https://xgkuyyqxeijropmqrpfk.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhna3V5eXF4ZWlqcm9wbXFycGZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MTIxNDcsImV4cCI6MjEwMDk4ODE0N30.xaU5nNNrrzWjFnyL84UqeZhuAbZBsT0-Vf6-cRAHBbU";
 const LOGIN_DOMAIN = "@local.co";
+
+// 이 시간(분) 동안 아무 조작이 없으면 자동 로그아웃한다. 숫자만 바꾸면 됩니다.
+const IDLE_LIMIT_MIN = 30;
 </script>
 
 <!-- ============ 로그인 ============ -->
 <div id="login">
   <div class="login-card">
     <h1>KTS 업무 관리 시스템</h1>
-    <p class="sub">지시 등록과 이행 확인을 한 곳에서</p>
+    <p class="sub">업무 요청과 이행 확인을 한 곳에서</p>
     <div class="field">
       <label for="lid">아이디</label>
-      <div class="id-wrap">
-        <input id="lid" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="yh.yoon">
-        <span id="ldom">@local.co</span>
-      </div>
+      <input id="lid" autocapitalize="off" autocorrect="off" spellcheck="false">
     </div>
     <div class="field">
       <label for="lpw">비밀번호</label>
@@ -189,16 +287,30 @@ const LOGIN_DOMAIN = "@local.co";
   </div>
 </div>
 
+<!-- ============ 상단 바 (로그인 후 모든 화면에 고정) ============ -->
+<header id="topbar" class="hidden">
+  <h1>KTS 업무 관리</h1>
+  <span class="who" id="who"></span>
+  <button id="btnStat">통계</button>
+  <button id="btnAcct" class="hidden">계정</button>
+  <button id="btnPw">비밀번호</button>
+  <button id="btnOut">로그아웃</button>
+</header>
+
 <!-- ============ 목록 ============ -->
 <div id="app" class="hidden">
-  <header>
-    <h1>KTS 업무 관리</h1>
-    <span class="who" id="who"></span>
-    <button id="btnPw">비밀번호</button>
-    <button id="btnOut">로그아웃</button>
-  </header>
   <main>
+    <div id="pwBanner"></div>
     <div id="banner"></div>
+    <div class="mbar" id="mBar">
+      <div class="mnav">
+        <button type="button" id="mPrev" aria-label="이전 달">◀</button>
+        <b id="mLabel" class="tnum">—</b>
+        <button type="button" id="mNext" aria-label="다음 달">▶</button>
+      </div>
+      <button type="button" class="btn-now" id="mNow">당월</button>
+      <label class="carry"><input type="checkbox" id="fCarry" checked>이월 미완료 포함</label>
+    </div>
     <div class="toolbar">
       <select id="fStatus">
         <option value="all">전체</option>
@@ -211,10 +323,12 @@ const LOGIN_DOMAIN = "@local.co";
       </select>
       <select id="fCat"><option value="">분류 전체</option></select>
       <input id="fQ" placeholder="제목·내용 검색">
+      <label class="carry hidden" id="fHiddenWrap">
+        <input type="checkbox" id="fHidden">숨긴 항목 보기</label>
     </div>
     <div id="list"></div>
   </main>
-  <button class="fab hidden" id="fabNew">＋ 지시 등록</button>
+  <button class="fab hidden" id="fabNew">＋ 업무 요청</button>
 </div>
 
 <!-- ============ 상세 ============ -->
@@ -222,16 +336,95 @@ const LOGIN_DOMAIN = "@local.co";
   <div class="sheet-bar">
     <button class="btn btn-sm" id="dBack">← 목록</button>
     <strong id="dNo"></strong>
-    <button class="btn btn-sm btn-danger hidden" id="dDel">삭제</button>
+    <button class="btn btn-sm hidden" id="dEdit">수정</button>
+    <button class="btn btn-sm hidden" id="dHide">숨김</button>
+    <button class="btn btn-sm btn-danger hidden" id="dDel">완전 삭제</button>
   </div>
   <div id="dBody"></div>
+</div></div>
+
+<!-- ============ 통계 ============ -->
+<div id="stat" class="hidden"><div class="sheet">
+  <div class="sheet-bar">
+    <button class="btn btn-sm" id="sBack">← 목록</button>
+    <strong>분류별 통계</strong>
+  </div>
+  <div class="mbar">
+    <div class="mnav">
+      <button type="button" id="sPrev" aria-label="이전 달">◀</button>
+      <b id="sLabel" class="tnum">—</b>
+      <button type="button" id="sNext" aria-label="다음 달">▶</button>
+    </div>
+    <button type="button" class="btn-now" id="sNow">당월</button>
+  </div>
+  <div class="box" id="sBody"></div>
+  <div class="box">
+    <h4>내보내기</h4>
+    <div class="actions">
+      <button class="btn" id="sCsvSum">분류별 요약 CSV</button>
+      <button class="btn" id="sCsvAll">업무 요청 상세 CSV</button>
+    </div>
+    <p class="note" style="margin:10px 0 0">엑셀에서 바로 열립니다. 한글이 깨지지 않도록 처리되어 있습니다.</p>
+  </div>
+</div></div>
+
+<!-- ============ 계정 관리 (관리자) ============ -->
+<div id="acct" class="hidden"><div class="sheet">
+  <div class="sheet-bar">
+    <button class="btn btn-sm" id="aBack">← 목록</button>
+    <strong>계정 관리</strong>
+  </div>
+  <div class="box" id="acctBody"></div>
+
+  <div class="box">
+    <div class="box-head"><h4>분류 관리</h4>
+      <button class="btn btn-sm" id="catAdd">＋ 분류 추가</button></div>
+    <div id="catBody"></div>
+    <p class="note" style="margin:10px 0 0">
+      사용 중지한 분류는 새 업무 요청에서 고를 수 없지만, 기존 자료는 그대로 남습니다.
+      쓰던 분류는 지우지 말고 중지해주세요.</p>
+  </div>
+
+  <div class="box">
+    <div class="box-head"><h4>저장공간</h4>
+      <button class="btn btn-sm" id="stRefresh">사용량 확인</button></div>
+    <div id="stBody"><p class="note">사용량 확인을 누르면 조회합니다.</p></div>
+  </div>
+
+  <div class="box">
+    <h4>신규 계정 만들기</h4>
+    <p class="note" style="margin:0 0 12px">
+      로그인 계정 생성은 보안상 브라우저에서 할 수 없습니다.
+      아래에 입력하면 <b>실행할 SQL을 만들어 드립니다</b>. 복사해서 Supabase SQL Editor에 붙여넣고 Run 하세요.</p>
+    <div class="field">
+      <label for="nList">명단 — 한 줄에 한 명씩</label>
+      <textarea id="nList" style="min-height:150px; font-family:ui-monospace,Consolas,monospace; font-size:13px"
+placeholder="hong.gd, 홍길동, 케이터링, 일반, 대리
+kim.cs, 김철수, 케이터링, 관리자, 과장
+icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
+      <p class="att-hint">
+        순서 : <b>아이디, 이름, 소속, 권한, 직책, 알림이메일</b><br>
+        · 소속은 <b>케이터링</b> 또는 <b>도급사</b> · 권한은 <b>관리자</b> 또는 <b>일반</b>(생략 시 일반)<br>
+        · 직책과 알림이메일은 비워도 됩니다 · 엑셀에서 복사해 붙여넣어도 됩니다
+      </p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="nMake">SQL 만들기</button>
+      <button class="btn hidden" id="nCopy">복사</button>
+    </div>
+    <div id="nCheck"></div>
+    <textarea id="nSql" class="hidden" readonly
+      style="width:100%; margin-top:12px; min-height:160px; padding:10px 11px;
+             border:1px solid var(--line); border-radius:8px; background:var(--paper);
+             font-family:ui-monospace,Consolas,monospace; font-size:12.5px"></textarea>
+  </div>
 </div></div>
 
 <!-- ============ 글쓰기 ============ -->
 <div id="write" class="hidden"><div class="sheet">
   <div class="sheet-bar">
     <button class="btn btn-sm" id="wBack">← 취소</button>
-    <strong>지시 등록</strong>
+    <strong id="wHead">업무 요청 등록</strong>
   </div>
   <div class="box">
     <div class="field"><label for="wTitle">제목</label><input id="wTitle" maxlength="120"></div>
@@ -246,10 +439,15 @@ const LOGIN_DOMAIN = "@local.co";
       <div class="field"><label for="wFdate">해당 일자</label><input id="wFdate" type="date"></div>
     </div>
     <div class="field"><label for="wDue">이행 기한</label><input id="wDue" type="datetime-local"></div>
-    <div class="field"><label for="wBody">지시 내용</label><textarea id="wBody"></textarea></div>
+    <div class="field"><label for="wBody">요청 내용</label><textarea id="wBody"></textarea></div>
     <div class="field" style="display:flex;align-items:center;gap:8px">
       <input type="checkbox" id="wPhoto" style="width:auto">
       <label for="wPhoto" style="margin:0">사진 회신 필요</label>
+    </div>
+    <div class="field">
+      <label for="aNew">첨부파일</label>
+      <div class="att-pick"><input type="file" id="aNew" multiple></div>
+      <p class="att-hint" id="aNewHint"></p>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="wSave">등록</button>
@@ -276,6 +474,21 @@ const ACTIVE = ["open","read","reported","rejected"];
 let sb = null, me = null;
 let PROFILES = {}, CATS = [], POSTS = [], READS = {}, COMMENTS = [], REPORTS = [];
 let currentPost = null, currentReport = null;
+let ATTS = [];                       // 현재 상세화면의 첨부 목록
+let ATT_COUNT = {};                  // 지시 id → 첨부 개수 (목록 카드용)
+let POST_READS = [], POST_EVENTS = [];   // 현재 상세화면의 열람 로그 · 결정 이력
+let AUTH_USER = null;                    // 로그인 계정 (비밀번호 변경 여부 확인용)
+
+/* 전 기간 검색 상태 */
+const SEARCH_MIN = 2;
+let SEARCH_ON = false, SEARCH_BUSY = false, SEARCH_POSTS = [], SEARCH_TIMER = null;
+
+/* ---------- 첨부 설정 ---------- */
+const ATT_BUCKET   = "board-files";
+const ATT_MAX_MB   = 5;              // 파일 1건당 상한
+const ATT_MAX_CNT  = 5;              // 1회 업로드 최대 개수
+const IMG_MAX_SIDE = 1600;           // 이미지 자동 압축 시 장변 픽셀
+const IMG_QUALITY  = 0.8;
 
 const $  = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
@@ -291,16 +504,88 @@ const nameOf = id => PROFILES[id]?.name || "알 수 없음";
 const isCatering = () => me?.org === "catering";
 const isOverdue  = p => p.due_at && ACTIVE.includes(p.status) && new Date(p.due_at) < new Date();
 
+/* 기한 임박 = 미완료 + 남은 시간 24시간 이내 */
+const hoursLeft = p => (new Date(p.due_at) - new Date()) / 36e5;
+const isDueSoon = p => !!p.due_at && ACTIVE.includes(p.status)
+                       && !isOverdue(p) && hoursLeft(p) <= 24;
+const dueSoonLabel = p => {
+  const h = hoursLeft(p);
+  return h <= 3 ? "마감 임박" : `마감 ${Math.max(1, Math.round(h))}시간 전`;
+};
+
+/* 목록 정렬 우선순위 — 숫자가 작을수록 위 */
+const urgencyRank = p => {
+  if(!ACTIVE.includes(p.status)) return 4;   // 완료 건은 아래로
+  if(isOverdue(p))               return 0;
+  if(isDueSoon(p))               return 1;
+  if(p.urgency === "urgent")     return 2;
+  return 3;
+};
+
+/* ---------- 월 유틸 ---------- */
+const pad2 = n => String(n).padStart(2,"0");
+const ymNow = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; };
+const ymOf  = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; };
+const ymShift = (ym, delta) => {
+  const [y,m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+};
+const ymLabel = ym => { const [y,m] = ym.split("-"); return `${y}년 ${Number(m)}월`; };
+let curMonth = ymNow();
+
 /* ---------- 초기화 ---------- */
-$("ldom").textContent = LOGIN_DOMAIN;
+/* ---------- 자동 로그아웃 ---------- */
+const IDLE_KEY = "kts_last_active";
+const touchActivity = () => { try{ localStorage.setItem(IDLE_KEY, String(Date.now())); }catch(e){} };
+const idleExceeded = () => {
+  try{
+    const t = Number(localStorage.getItem(IDLE_KEY) || 0);
+    return t > 0 && Date.now() - t > IDLE_LIMIT_MIN * 60000;
+  }catch(e){ return false; }
+};
+async function forceLogout(msg){
+  try{ localStorage.removeItem(IDLE_KEY); }catch(e){}
+  await sb.auth.signOut();
+  if(msg) alert(msg);
+  location.reload();
+}
+const IDLE_MSG = `${IDLE_LIMIT_MIN}분 동안 사용이 없어 자동으로 로그아웃했습니다.\n다시 로그인해주세요.`;
+
+function startIdleWatch(){
+  ["click","keydown","touchstart","scroll"].forEach(ev =>
+    window.addEventListener(ev, touchActivity, {passive:true}));
+  setInterval(() => { if(me && idleExceeded()) forceLogout(IDLE_MSG); }, 30000);
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState !== "visible") return;
+    if(me && idleExceeded()) forceLogout(IDLE_MSG); else touchActivity();
+  });
+}
 
 if(SUPABASE_ANON_KEY.startsWith("여기에")){
   $("loginErr").textContent = "설정이 필요합니다. 파일 상단 SUPABASE_ANON_KEY에 키를 입력하세요.";
   $("btnLogin").disabled = true;
 } else {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  sb.auth.getSession().then(({data}) => { if(data.session) start(); });
+  sb.auth.getSession().then(async ({data}) => {
+    if(!data.session) return;
+    if(idleExceeded()){                 // 오래 방치된 세션은 되살리지 않는다
+      try{ localStorage.removeItem(IDLE_KEY); }catch(e){}
+      await sb.auth.signOut();
+      return;                           // 로그인 화면 그대로 둔다
+    }
+    touchActivity();
+    start();
+  });
 }
+
+/* 상단 바 높이를 실제로 재서 본문 위치에 반영 (기기별 안전영역 대응) */
+function syncHeaderHeight(){
+  const h = $("topbar").offsetHeight;
+  if(h) document.documentElement.style.setProperty("--hh", h + "px");
+}
+window.addEventListener("resize", syncHeaderHeight);
+window.addEventListener("orientationchange", () => setTimeout(syncHeaderHeight, 250));
 
 /* ---------- 로그인 ---------- */
 $("btnLogin").onclick = login;
@@ -308,39 +593,72 @@ $("lpw").onkeydown = e => { if(e.key === "Enter") login(); };
 $("lid").onkeydown = e => { if(e.key === "Enter") $("lpw").focus(); };
 
 async function login(){
-  const id = $("lid").value.trim(), pw = $("lpw").value;
+  const id = $("lid").value.trim().toLowerCase(), pw = $("lpw").value;
   if(!id || !pw){ $("loginErr").textContent = "아이디와 비밀번호를 입력하세요."; return; }
   $("btnLogin").disabled = true; $("loginErr").textContent = "";
   const email = id.includes("@") ? id : id + LOGIN_DOMAIN;
   const {error} = await sb.auth.signInWithPassword({email, password: pw});
   $("btnLogin").disabled = false;
   if(error){ $("loginErr").textContent = "아이디 또는 비밀번호가 맞지 않습니다."; return; }
+  touchActivity();
   start();
 }
 
-$("btnOut").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$("btnOut").onclick = () => forceLogout();
 
-$("btnPw").onclick = async () => {
+$("btnPw").onclick = changePassword;
+
+async function changePassword(){
   const pw = prompt("새 비밀번호를 입력하세요 (6자 이상)");
   if(!pw) return;
   if(pw.length < 6){ alert("6자 이상이어야 합니다."); return; }
-  const {error} = await sb.auth.updateUser({password: pw});
-  alert(error ? "변경하지 못했습니다: " + error.message : "비밀번호를 변경했습니다.");
-};
+  if(pw === "kts1234"){ alert("초기 비밀번호와 같습니다. 다른 값으로 정해주세요."); return; }
+  const {data, error} = await sb.auth.updateUser({password: pw, data:{pw_changed:true}});
+  if(error){ alert("변경하지 못했습니다: " + error.message); return; }
+  AUTH_USER = data?.user || AUTH_USER;
+  alert("비밀번호를 변경했습니다.");
+  drawPwBanner();
+}
+
+/* 초기 비밀번호를 아직 안 바꾼 계정에 안내를 띄운다 */
+function drawPwBanner(){
+  const 변경함 = !!AUTH_USER?.user_metadata?.pw_changed;
+  $("pwBanner").innerHTML = 변경함 ? "" :
+    `<div class="banner banner-warn">
+       <b>초기 비밀번호를 사용 중입니다.</b>
+       공용 비밀번호(kts1234)라 본인 외에도 접속할 수 있습니다. 지금 변경해주세요.
+       <button class="btn btn-sm" id="pwGo" style="margin-left:8px">비밀번호 변경</button>
+     </div>`;
+  if($("pwGo")) $("pwGo").onclick = changePassword;
+}
 
 /* ---------- 시작 ---------- */
 async function start(){
   const {data:{user}} = await sb.auth.getUser();
+  AUTH_USER = user;
   const {data:prof} = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if(!prof){
     alert("계정이 등록되지 않았습니다. 관리자에게 profiles 등록을 요청하세요.");
     await sb.auth.signOut(); location.reload(); return;
   }
+  if(prof.active === false){
+    alert("사용이 중지된 계정입니다. 관리자에게 문의하세요.");
+    await sb.auth.signOut(); location.reload(); return;
+  }
   me = prof;
   $("login").classList.add("hidden");
+  $("topbar").classList.remove("hidden");
   $("app").classList.remove("hidden");
-  $("who").textContent = `${me.name} · ${isCatering() ? "케이터링" : "도급사"}`;
-  if(isCatering()) $("fabNew").classList.remove("hidden");
+  $("who").textContent = `${me.name} · ${isCatering() ? "케이터링" : "KTS"}`;
+  syncHeaderHeight();
+  touchActivity();
+  startIdleWatch();
+  drawPwBanner();
+  if(isCatering()){
+    $("fabNew").classList.remove("hidden");
+    $("fHiddenWrap").classList.remove("hidden");
+  }
+  if(me.role === "admin") $("btnAcct").classList.remove("hidden");
 
   const [{data:pl}, {data:cl}] = await Promise.all([
     sb.from("profiles").select("id,name,org"),
@@ -353,18 +671,47 @@ async function start(){
   $("wCat").innerHTML = opts;
 
   await loadList();
+
+  // 메일의 "확인하러 가기" 링크로 들어온 경우 해당 건을 바로 연다
+  const 링크 = Number(new URLSearchParams(location.search).get("post"));
+  if(링크){
+    history.replaceState(null, "", location.pathname);
+    const {data} = await sb.from("posts").select("*").eq("id", 링크).maybeSingle();
+    if(data){
+      if(!POSTS.some(x => x.id === data.id)) POSTS.push(data);
+      curMonth = ymOf(data.created_at);
+      render();
+      openDetail(data.id);
+    }
+  }
 }
 
 /* ---------- 목록 ---------- */
 async function loadList(){
-  const [pr, rd, cm, rp] = await Promise.all([
+  // 최신 300건 + 미완료 전건(기간 무관) → 오래된 미처리 건이 누락되지 않도록 합침
+  const [pr, pa, rd, cm, rp, at] = await Promise.all([
     sb.from("posts").select("*").order("created_at", {ascending:false}).limit(300),
+    sb.from("posts").select("*").in("status", ACTIVE).order("created_at", {ascending:false}),
     sb.from("post_reads").select("*").eq("user_id", me.id),
-    sb.from("comments").select("post_id,author_id,created_at"),
-    sb.from("reports").select("post_id,reporter_id,reported_at,result")
+    sb.from("comments").select("id,post_id,author_id,created_at"),
+    sb.from("reports").select("id,post_id,reporter_id,reported_at,result"),
+    sb.from("attachments").select("post_id,report_id,comment_id")
   ]);
-  POSTS = pr.data || []; COMMENTS = cm.data || []; REPORTS = rp.data || [];
+  const merged = new Map();
+  [...(pr.data || []), ...(pa.data || [])].forEach(p => merged.set(p.id, p));
+  POSTS = [...merged.values()].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  COMMENTS = cm.data || []; REPORTS = rp.data || [];
   READS = {}; (rd.data || []).forEach(r => READS[r.post_id] = r);
+
+  // 첨부 개수를 지시 단위로 집계 (보고·댓글에 달린 것까지 합산)
+  const byReport = {}, byComment = {};
+  REPORTS .forEach(r => byReport[r.id]  = r.post_id);
+  COMMENTS.forEach(c => byComment[c.id] = c.post_id);
+  ATT_COUNT = {};
+  (at.data || []).forEach(a => {
+    const pid = a.post_id || byReport[a.report_id] || byComment[a.comment_id];
+    if(pid) ATT_COUNT[pid] = (ATT_COUNT[pid] || 0) + 1;
+  });
   render();
 }
 
@@ -386,21 +733,55 @@ function latestReport(pid){
 
 function render(){
   const fs = $("fStatus").value, fc = $("fCat").value, q = $("fQ").value.trim().toLowerCase();
-  const rows = POSTS.filter(p => {
+  const carryOn = $("fCarry").checked;
+  const 검색중 = SEARCH_ON && q.length >= SEARCH_MIN;
+
+  $("mLabel").textContent = ymLabel(curMonth);
+  $("mNext").disabled = curMonth >= ymNow();
+  $("mBar").classList.toggle("hidden", 검색중);
+
+  const isCarry = p => !검색중 && ymOf(p.created_at) < curMonth && ACTIVE.includes(p.status);
+  const base = 검색중 ? SEARCH_POSTS : POSTS;
+
+  const 숨김보기 = $("fHidden").checked;
+  const rows = base.filter(p => {
+    if(!!p.deleted_at !== 숨김보기) return false;      // 숨긴 항목은 따로 본다
+    if(!검색중){
+      const inMonth = ymOf(p.created_at) === curMonth;
+      if(!inMonth && !(carryOn && isCarry(p))) return false;
+    }
     if(fs === "active" && !ACTIVE.includes(p.status)) return false;
     if(fs !== "active" && fs !== "all" && p.status !== fs) return false;
     if(fc && String(p.category_id) !== fc) return false;
     if(q && !((p.title||"") + (p.body||"")).toLowerCase().includes(q)) return false;
     return true;
+  }).sort((a,b) => {
+    const ca = isCarry(a) ? 0 : 1, cb = isCarry(b) ? 0 : 1;   // 이월 건을 위로
+    if(ca !== cb) return ca - cb;
+    const pa = urgencyRank(a), pb = urgencyRank(b);           // 급한 건을 위로
+    if(pa !== pb) return pa - pb;
+    return new Date(b.created_at) - new Date(a.created_at);
   });
 
+  // 검색 안내 문구
+  $("banner").innerHTML = 검색중
+    ? `<div class="banner">전 기간에서 "<b>${esc($("fQ").value.trim())}</b>" 검색 결과 ${rows.length}건
+         · 월 필터는 잠시 해제됩니다.
+         <button class="btn btn-sm" id="qClear" style="margin-left:8px">검색 해제</button></div>`
+    : (SEARCH_BUSY ? `<div class="banner">전 기간 검색 중…</div>` : "");
+  if($("qClear")) $("qClear").onclick = () => {
+    $("fQ").value = ""; SEARCH_ON = false; SEARCH_POSTS = []; render();
+  };
+
   if(!rows.length){
-    $("list").innerHTML = `<div class="empty">해당하는 지시가 없습니다.</div>`;
+    $("list").innerHTML = `<div class="empty">${검색중
+      ? "검색 결과가 없습니다."
+      : ymLabel(curMonth) + "에 해당하는 업무 요청이 없습니다."}</div>`;
     return;
   }
   $("list").innerHTML = rows.map(p => {
     const st = ST[p.status], cat = CATS.find(c => c.id === p.category_id);
-    const n = unreadCount(p), late = isOverdue(p);
+    const n = unreadCount(p), late = isOverdue(p), soon = isDueSoon(p);
     const rep = latestReport(p.id);
     const badge = n === -1 ? `<span class="badge-n">NEW</span>`
                 : n > 0    ? `<span class="badge-n">${n}</span>` : "";
@@ -417,12 +798,16 @@ function render(){
     }
     if(p.status === "confirmed"){ sub = "완료"; rtCls = "rt-ok"; }
 
-    return `<div class="card" data-id="${p.id}" style="--bar:${late ? '#c2352b' : st.bar}">
+    return `<div class="card" data-id="${p.id}"
+      style="--bar:${late ? '#c2352b' : soon ? '#e08a1e' : st.bar}">
       <div class="card-main">
         <div class="card-top">
+          ${isCarry(p) ? `<span class="chip chip-carry">이월</span>` : ""}
           ${cat ? `<span class="chip chip-cat">${esc(cat.name)}</span>` : ""}
           ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
           ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
+          ${soon ? `<span class="chip chip-soon">${dueSoonLabel(p)}</span>` : ""}
+          ${ATT_COUNT[p.id] ? `<span class="chip chip-file">📎 ${ATT_COUNT[p.id]}</span>` : ""}
           ${badge}
         </div>
         <h3>${esc(p.title)}</h3>
@@ -443,7 +828,1020 @@ function render(){
 
 $("fStatus").onchange = render;
 $("fCat").onchange = render;
-$("fQ").oninput = render;
+$("fCarry").onchange = render;
+$("fHidden").onchange = render;
+
+/* 검색 — 두 글자 이상 입력하면 전 기간을 DB에서 찾는다 */
+$("fQ").oninput = () => {
+  const q = $("fQ").value.trim();
+  clearTimeout(SEARCH_TIMER);
+  if(q.length < SEARCH_MIN){
+    SEARCH_ON = false; SEARCH_POSTS = []; SEARCH_BUSY = false;
+    render(); return;
+  }
+  SEARCH_BUSY = true; render();
+  SEARCH_TIMER = setTimeout(() => runSearch(q), 350);
+};
+
+async function runSearch(q){
+  const safe = q.replace(/[,()"%\\]/g, " ").trim();
+  if(!safe){ SEARCH_BUSY = false; render(); return; }
+  const {data, error} = await sb.from("posts").select("*")
+    .or(`title.ilike.%${safe}%,body.ilike.%${safe}%`)
+    .order("created_at", {ascending:false}).limit(300);
+  if($("fQ").value.trim() !== q) return;      // 그 사이 입력이 바뀌면 버린다
+  SEARCH_BUSY = false;
+  if(error){ SEARCH_ON = false; alert("검색하지 못했습니다: " + error.message); render(); return; }
+  SEARCH_POSTS = data || [];
+  SEARCH_ON = true;
+  render();
+}
+$("mPrev").onclick = () => { curMonth = ymShift(curMonth, -1); render(); };
+$("mNext").onclick = () => { if(curMonth < ymNow()){ curMonth = ymShift(curMonth, 1); render(); } };
+$("mNow").onclick  = () => { curMonth = ymNow(); render(); };
+
+/* ============================================================
+   첨부파일
+   ============================================================ */
+const isImage = f => /^image\//.test(f.type || "");
+
+const extOf = name => {
+  const m = String(name).match(/\.([a-z0-9]{1,8})$/i);
+  return m ? m[1].toLowerCase() : "bin";
+};
+
+const attIcon = a => {
+  const e = extOf(a.file_name), m = a.mime_type || "";
+  if(m.startsWith("image/") || ["jpg","jpeg","png","gif","webp","heic","heif","bmp"].includes(e)) return "🖼";
+  if(e === "pdf") return "📕";
+  if(["xls","xlsx","xlsm","csv"].includes(e)) return "📗";
+  if(["doc","docx","hwp","hwpx"].includes(e)) return "📘";
+  if(["ppt","pptx"].includes(e)) return "📙";
+  if(["zip","7z","rar"].includes(e)) return "🗜";
+  if(m.startsWith("video/")) return "🎞";
+  return "📄";
+};
+
+/* 이미지 자동 축소 — 실패 시 원본 그대로 반환 */
+function shrinkImage(file){
+  return new Promise(resolve => {
+    if(!isImage(file)) return resolve(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, IMG_MAX_SIDE / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      try{
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        cv.toBlob(b => {
+          if(b && b.size < file.size){
+            const nm = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+            resolve(new File([b], nm, {type:"image/jpeg"}));
+          } else resolve(file);
+        }, "image/jpeg", IMG_QUALITY);
+      }catch(e){ resolve(file); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+const randPath = ext =>
+  `${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}.${ext}`;
+
+/**
+ * 선택된 파일을 업로드하고 attachments 행을 만든다.
+ * owner: {post_id:n} | {report_id:n} | {comment_id:n}
+ * 실패한 파일명 배열을 반환한다.
+ */
+async function uploadFiles(fileList, owner, kind){
+  const files = Array.from(fileList || []);
+  if(!files.length) return [];
+  const failed = [];
+  if(files.length > ATT_MAX_CNT)
+    failed.push(`${files.length - ATT_MAX_CNT}개 초과 — 앞에서 ${ATT_MAX_CNT}개만 올렸습니다`);
+  for(const raw of files.slice(0, ATT_MAX_CNT)){
+    const f = await shrinkImage(raw);
+    if(f.size > ATT_MAX_MB * 1024 * 1024){
+      failed.push(`${raw.name} (${ATT_MAX_MB}MB 초과)`);
+      continue;
+    }
+    const path = randPath(extOf(f.name));
+    const up = await sb.storage.from(ATT_BUCKET)
+      .upload(path, f, {contentType: f.type || "application/octet-stream"});
+    if(up.error){ failed.push(`${raw.name} (${up.error.message})`); continue; }
+    const ins = await sb.from("attachments").insert({
+      ...owner, kind,
+      file_name: raw.name, file_path: path,
+      mime_type: f.type || null, uploader_id: me.id
+    });
+    if(ins.error){
+      await sb.storage.from(ATT_BUCKET).remove([path]);   // 고아 파일 정리
+      failed.push(`${raw.name} (${ins.error.message})`);
+    }
+  }
+  return failed;
+}
+
+async function openAttachment(path, name){
+  const {data, error} = await sb.storage.from(ATT_BUCKET).createSignedUrl(path, 60);
+  if(error || !data){ alert("파일을 열지 못했습니다: " + (error?.message || "")); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
+}
+
+async function deleteAttachment(id){
+  const a = ATTS.find(x => x.id === id);
+  if(!a) return;
+  if(!confirm(`"${a.file_name}" 을(를) 삭제할까요?`)) return;
+  const {error} = await sb.from("attachments").delete().eq("id", id);
+  if(error){ alert("삭제하지 못했습니다: " + error.message); return; }
+  await sb.storage.from(ATT_BUCKET).remove([a.file_path]);
+  await refreshDetail();
+}
+
+const canDeleteAtt = a => a.uploader_id === me.id || isCatering();
+
+function attListHtml(list){
+  if(!list.length) return "";
+  return `<div class="att-list">` + list.map(a => `<div class="att">
+    <span class="ic">${attIcon(a)}</span>
+    <a href="#" data-att="${a.id}">${esc(a.file_name)}</a>
+    <span class="up">${esc(nameOf(a.uploader_id))}</span>
+    ${canDeleteAtt(a) ? `<button class="del" data-attdel="${a.id}" title="삭제">×</button>` : ""}
+  </div>`).join("") + `</div>`;
+}
+
+function attPickerHtml(inputId, label){
+  return `<div class="att-pick">
+      <input type="file" id="${inputId}" multiple>
+    </div>
+    <p class="att-hint">${label} · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB (사진은 자동으로 용량을 줄여 올립니다)</p>`;
+}
+
+/* 첨부 링크·삭제 버튼 연결 (drawDetail 이후 호출) */
+function bindAttEvents(root){
+  root.querySelectorAll("[data-att]").forEach(el => el.onclick = e => {
+    e.preventDefault();
+    const a = ATTS.find(x => x.id === Number(el.dataset.att));
+    if(a) openAttachment(a.file_path, a.file_name);
+  });
+  root.querySelectorAll("[data-attdel]").forEach(el =>
+    el.onclick = () => deleteAttachment(Number(el.dataset.attdel)));
+}
+
+/* ============================================================
+   통계 · 내보내기
+   ============================================================ */
+let statMonth = ymNow();
+let STAT_POSTS = [];      // 선택한 달의 지시 전건 (목록 캐시가 아닌 DB 직접 조회)
+let STAT_REPS  = [];      // 해당 지시들의 이행보고
+let STAT_ATT   = {};      // 지시 id → 첨부 개수
+
+/* 통계는 누락이 없어야 하므로 해당 월을 DB에서 직접 읽는다 */
+async function loadStat(){
+  $("sBody").innerHTML = `<div class="empty">불러오는 중…</div>`;
+  const [y,m] = statMonth.split("-").map(Number);
+  const from = new Date(y, m - 1, 1).toISOString();
+  const to   = new Date(y, m, 1).toISOString();
+
+  const {data, error} = await sb.from("posts").select("*")
+    .gte("created_at", from).lt("created_at", to)
+    .is("deleted_at", null)               // 숨긴 항목은 통계에서 제외
+    .order("created_at");
+  if(error){
+    $("sBody").innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;
+    return;
+  }
+  STAT_POSTS = data || [];
+  const ids = STAT_POSTS.map(p => p.id);
+
+  STAT_REPS = []; STAT_ATT = {};
+  if(ids.length){
+    const [rp, at] = await Promise.all([
+      sb.from("reports").select("id,post_id,reporter_id,reported_at,result").in("post_id", ids),
+      sb.from("attachments").select("post_id,report_id,comment_id")
+    ]);
+    STAT_REPS = rp.data || [];
+    const byReport = {};
+    STAT_REPS.forEach(r => byReport[r.id] = r.post_id);
+    (at.data || []).forEach(a => {
+      const pid = a.post_id || byReport[a.report_id];
+      if(pid && ids.includes(pid)) STAT_ATT[pid] = (STAT_ATT[pid] || 0) + 1;
+    });
+  }
+  drawStat();
+}
+
+const statReport = pid => {
+  const rs = STAT_REPS.filter(r => r.post_id === pid)
+    .sort((a,b) => new Date(a.reported_at) - new Date(b.reported_at));
+  return rs.length ? rs[rs.length-1] : null;
+};
+
+function buildStatRows(){
+  const rows = CATS.map(c => ({name:c.name, id:c.id, total:0, open:0}));
+  const etc = {name:"(분류 없음)", id:null, total:0, open:0};
+  STAT_POSTS.forEach(p => {
+    const r = rows.find(x => x.id === p.category_id) || etc;
+    r.total++;
+    if(ACTIVE.includes(p.status)) r.open++;
+  });
+  if(etc.total) rows.push(etc);
+  return rows;
+}
+
+function drawStat(){
+  $("sLabel").textContent = ymLabel(statMonth);
+  $("sNext").disabled = statMonth >= ymNow();
+
+  const rows = buildStatRows();
+  const tot = rows.reduce((a,r) => a + r.total, 0);
+  const opn = rows.reduce((a,r) => a + r.open, 0);
+
+  if(!tot){
+    $("sBody").innerHTML = `<div class="empty">${ymLabel(statMonth)}에 등록된 업무 요청이 없습니다.</div>`;
+    return;
+  }
+  $("sBody").innerHTML = `<table class="stat">
+    <thead><tr><th>분류</th><th>총 건수</th><th>미완료</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${esc(r.name)}</td>
+      <td>${r.total}</td>
+      <td class="${r.open ? "open-n" : "zero"}">${r.open}</td>
+    </tr>`).join("")}
+    <tr class="sum"><td>합계</td><td>${tot}</td>
+      <td class="${opn ? "open-n" : "zero"}">${opn}</td></tr>
+    </tbody></table>
+    <p class="note" style="margin:12px 0 0">
+      미완료 = 대기 · 진행 중 · 확인 요망 · 반려 (완료만 제외) · 기준일은 요청 등록일</p>`;
+}
+
+/* ---------- CSV ---------- */
+const csvCell = v => {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+function downloadCsv(filename, rows){
+  const body = rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + body], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function csvSummary(){
+  const rows = buildStatRows();
+  if(!rows.some(r => r.total)){ alert("해당 월에 자료가 없습니다."); return; }
+  const out = [["분류","총 건수","미완료"]];
+  rows.forEach(r => out.push([r.name, r.total, r.open]));
+  out.push(["합계",
+    rows.reduce((a,r) => a + r.total, 0),
+    rows.reduce((a,r) => a + r.open, 0)]);
+  downloadCsv(`KTS_분류별요약_${statMonth}.csv`, out);
+}
+
+function csvDetail(){
+  const list = STAT_POSTS;
+  if(!list.length){ alert("해당 월에 자료가 없습니다."); return; }
+  const out = [["번호","등록일시","분류","긴급","제목","편명","해당일자","이행기한",
+                "상태","이행결과","기한초과","작성자","보고자","보고일시","첨부수"]];
+  list.forEach(p => {
+    const cat = CATS.find(c => c.id === p.category_id);
+    const rep = statReport(p.id);
+    out.push([
+      p.id, fmt(p.created_at), cat ? cat.name : "",
+      p.urgency === "urgent" ? "긴급" : "일반",
+      p.title, p.flight_no || "",
+      p.flight_date ? fmt(p.flight_date, false) : "",
+      p.due_at ? fmt(p.due_at) : "",
+      ST[p.status].label,
+      rep ? RESULT[rep.result] : "",
+      isOverdue(p) ? "Y" : "",
+      nameOf(p.author_id),
+      rep ? nameOf(rep.reporter_id) : "",
+      rep ? fmt(rep.reported_at) : "",
+      STAT_ATT[p.id] || 0
+    ]);
+  });
+  downloadCsv(`KTS_업무요청상세_${statMonth}.csv`, out);
+}
+
+$("btnStat").onclick = async () => {
+  statMonth = curMonth;
+  $("sLabel").textContent = ymLabel(statMonth);
+  $("stat").classList.remove("hidden");
+  window.scrollTo(0,0);
+  await loadStat();
+};
+$("sBack").onclick = () => $("stat").classList.add("hidden");
+$("sPrev").onclick = async () => { statMonth = ymShift(statMonth, -1); await loadStat(); };
+$("sNext").onclick = async () => {
+  if(statMonth < ymNow()){ statMonth = ymShift(statMonth, 1); await loadStat(); }
+};
+$("sNow").onclick  = async () => { statMonth = ymNow(); await loadStat(); };
+$("sCsvSum").onclick = csvSummary;
+$("sCsvAll").onclick = csvDetail;
+
+/* ============================================================
+   계정 관리 (관리자 전용)
+   ============================================================ */
+let ACCTS = [];
+
+async function loadAccounts(){
+  $("acctBody").innerHTML = `<div class="empty">불러오는 중…</div>`;
+  const {data, error} = await sb.from("profiles").select("*").order("org").order("name");
+  if(error){
+    $("acctBody").innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;
+    return;
+  }
+  ACCTS = data || [];
+  drawAccounts();
+}
+
+let editingAcct = null;      // 지금 편집 중인 계정 id
+
+function acctEditForm(u){
+  return `<div class="acct-row acct-editing">
+    <div style="grid-column:1/-1">
+      <div class="row2">
+        <div class="field"><label for="eName">이름</label>
+          <input id="eName" value="${esc(u.name)}"></div>
+        <div class="field"><label for="ePos">직책</label>
+          <input id="ePos" value="${esc(u.position || "")}" placeholder="예: 주임"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="eMail">알림 이메일</label>
+          <input id="eMail" value="${esc(u.email || "")}" placeholder="없으면 비워두세요"
+            autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><label for="eOrg">소속</label>
+          <select id="eOrg">
+            <option value="catering"${u.org === "catering" ? " selected" : ""}>케이터링</option>
+            <option value="vendor"${u.org === "vendor" ? " selected" : ""}>도급사(KTS)</option>
+          </select></div>
+      </div>
+      <div class="field"><label for="eRole">권한</label>
+        <select id="eRole">
+          <option value="member"${u.role !== "admin" ? " selected" : ""}>일반</option>
+          <option value="admin"${u.role === "admin" ? " selected" : ""}>관리자</option>
+        </select></div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" id="eSave">저장</button>
+        <button class="btn btn-sm" id="eCancel">취소</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function drawAccounts(){
+  const 그룹 = [["catering","케이터링"], ["vendor","도급사(KTS)"]];
+  let h = "";
+  그룹.forEach(([org, label]) => {
+    const list = ACCTS.filter(u => u.org === org);
+    h += `<div class="acct-grp">${label} ${list.length}명</div>`;
+    h += list.length ? list.map(u => u.id === editingAcct ? acctEditForm(u) : `<div class="acct-row">
+        <div>
+          <div class="nm">${esc(u.name)}
+            ${u.role === "admin" ? `<span class="tag tag-adm">관리자</span>` : ""}
+            ${u.active === false ? `<span class="tag tag-off">사용중지</span>` : ""}
+          </div>
+          <div class="sub">${esc(u.position || "직책 없음")}
+            ${u.email ? ` · <b>${esc(u.email)}</b>` : ""}</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-sm" data-edit="${u.id}">수정</button>
+          <button class="btn btn-sm" data-pw="${u.id}">비번 초기화</button>
+          <button class="btn btn-sm" data-toggle="${u.id}">${u.active === false ? "사용 재개" : "사용 중지"}</button>
+        </div>
+      </div>`).join("")
+      : `<p class="note">등록된 계정이 없습니다.</p>`;
+  });
+  $("acctBody").innerHTML = h;
+
+  $("acctBody").querySelectorAll("[data-edit]").forEach(el =>
+    el.onclick = () => { editingAcct = el.dataset.edit; drawAccounts(); });
+  $("acctBody").querySelectorAll("[data-toggle]").forEach(el =>
+    el.onclick = () => toggleAccount(el.dataset.toggle));
+  $("acctBody").querySelectorAll("[data-pw]").forEach(el =>
+    el.onclick = () => resetPassword(el.dataset.pw));
+  if($("eCancel")) $("eCancel").onclick = () => { editingAcct = null; drawAccounts(); };
+  if($("eSave"))   $("eSave").onclick   = saveAccount;
+  if($("eName"))   $("eName").focus();
+}
+
+async function saveAccount(){
+  const u = ACCTS.find(x => x.id === editingAcct);
+  if(!u) return;
+  const name = $("eName").value.trim();
+  const pos  = $("ePos").value.trim();
+  const mail = $("eMail").value.trim();
+  const org  = $("eOrg").value;
+  const role = $("eRole").value;
+
+  if(!name){ alert("이름은 비울 수 없습니다."); return; }
+  if(mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)){
+    alert("이메일 형식이 올바르지 않습니다."); return;
+  }
+  if(role !== "admin" && u.role === "admin"
+     && ACCTS.filter(x => x.role === "admin").length <= 1){
+    alert("마지막 관리자입니다. 다른 사람을 먼저 관리자로 지정하세요."); return;
+  }
+  if(u.id === me.id && role !== "admin"
+     && !confirm("본인 권한을 일반으로 내리면 이 계정 화면에 다시 들어올 수 없습니다.\n계속할까요?")) return;
+
+  $("eSave").disabled = true; $("eSave").textContent = "저장 중…";
+  const {error} = await sb.from("profiles").update({
+    name, position: pos || null, email: mail || null, org, role
+  }).eq("id", u.id);
+  if(error){
+    $("eSave").disabled = false; $("eSave").textContent = "저장";
+    alert("수정하지 못했습니다: " + error.message); return;
+  }
+  editingAcct = null;
+  await loadAccounts();
+}
+
+/* 비밀번호 초기화 — 관리자만 */
+async function resetPassword(id){
+  const u = ACCTS.find(x => x.id === id);
+  if(!u) return;
+  if(!confirm(`${u.name} 님의 비밀번호를 kts1234 로 초기화할까요?\n\n`
+            + "본인에게 알려주시고, 로그인 후 바꾸도록 안내해주세요.")) return;
+  const {data, error} = await sb.rpc("reset_user_password", {p_user_id: id});
+  alert(error ? "초기화하지 못했습니다: " + error.message
+              : (data || "초기화했습니다.") + "\n\n새 비밀번호: kts1234");
+}
+
+async function toggleAccount(id){
+  const u = ACCTS.find(x => x.id === id);
+  if(!u) return;
+  const 중지 = u.active !== false;
+  if(u.id === me.id && 중지){ alert("본인 계정은 중지할 수 없습니다."); return; }
+  if(!confirm(중지
+      ? `${u.name} 님의 사용을 중지할까요?\n로그인해도 화면이 열리지 않습니다.`
+      : `${u.name} 님의 사용을 재개할까요?`)) return;
+  const {error} = await sb.from("profiles").update({active: !중지}).eq("id", id);
+  if(error){ alert("변경하지 못했습니다: " + error.message); return; }
+  await loadAccounts();
+}
+
+/* ============================================================
+   분류 관리
+   ============================================================ */
+let editingCat = null;
+
+function drawCats(){
+  $("catBody").innerHTML = CATS.length ? CATS.map((c, i) => c.id === editingCat
+    ? `<div class="acct-row acct-editing"><div style="grid-column:1/-1">
+         <div class="field"><label for="cName">분류 이름</label>
+           <input id="cName" value="${esc(c.name)}" maxlength="20"></div>
+         <div class="actions">
+           <button class="btn btn-primary btn-sm" id="cSaveName">저장</button>
+           <button class="btn btn-sm" id="cCancelName">취소</button>
+         </div></div></div>`
+    : `<div class="acct-row">
+         <div>
+           <div class="nm">${esc(c.name)}
+             ${c.active === false ? `<span class="tag tag-off">사용중지</span>` : ""}</div>
+           <div class="sub">표시 순서 ${i + 1}번</div>
+         </div>
+         <div class="actions">
+           <button class="btn btn-sm" data-cup="${c.id}" ${i === 0 ? "disabled" : ""}>▲</button>
+           <button class="btn btn-sm" data-cdn="${c.id}" ${i === CATS.length-1 ? "disabled" : ""}>▼</button>
+           <button class="btn btn-sm" data-cedit="${c.id}">이름 수정</button>
+           <button class="btn btn-sm" data-coff="${c.id}">${c.active === false ? "사용 재개" : "사용 중지"}</button>
+         </div>
+       </div>`).join("")
+    : `<p class="note">등록된 분류가 없습니다.</p>`;
+
+  $("catBody").querySelectorAll("[data-cedit]").forEach(el =>
+    el.onclick = () => { editingCat = Number(el.dataset.cedit); drawCats(); });
+  $("catBody").querySelectorAll("[data-coff]").forEach(el =>
+    el.onclick = () => toggleCat(Number(el.dataset.coff)));
+  $("catBody").querySelectorAll("[data-cup]").forEach(el =>
+    el.onclick = () => moveCat(Number(el.dataset.cup), -1));
+  $("catBody").querySelectorAll("[data-cdn]").forEach(el =>
+    el.onclick = () => moveCat(Number(el.dataset.cdn), 1));
+  if($("cCancelName")) $("cCancelName").onclick = () => { editingCat = null; drawCats(); };
+  if($("cSaveName"))   $("cSaveName").onclick   = saveCatName;
+  if($("cName"))       $("cName").focus();
+}
+
+/* 관리 화면에서는 사용 중지된 분류까지 모두 본다 */
+async function loadCatsAll(){
+  const {data} = await sb.from("categories").select("*").order("sort_order").order("id");
+  CATS = data || [];
+  drawCats();
+}
+
+async function saveCatName(){
+  const name = $("cName").value.trim();
+  if(!name){ alert("이름을 입력하세요."); return; }
+  if(CATS.some(c => c.id !== editingCat && c.name === name)){
+    alert("같은 이름의 분류가 이미 있습니다."); return;
+  }
+  const {error} = await sb.from("categories").update({name}).eq("id", editingCat);
+  if(error){ alert("수정하지 못했습니다: " + error.message); return; }
+  editingCat = null;
+  await loadCatsAll();
+}
+
+async function toggleCat(id){
+  const c = CATS.find(x => x.id === id);
+  if(!c) return;
+  const 중지 = c.active !== false;
+  if(!confirm(중지
+    ? `"${c.name}" 을(를) 사용 중지할까요?\n새 업무 요청에서 고를 수 없게 됩니다.\n기존 자료는 그대로 남습니다.`
+    : `"${c.name}" 을(를) 다시 사용할까요?`)) return;
+  const {error} = await sb.from("categories").update({active: !중지}).eq("id", id);
+  if(error){ alert("변경하지 못했습니다: " + error.message); return; }
+  await loadCatsAll();
+}
+
+async function moveCat(id, 방향){
+  const i = CATS.findIndex(c => c.id === id);
+  const j = i + 방향;
+  if(i < 0 || j < 0 || j >= CATS.length) return;
+
+  // 자리를 바꾼 뒤 순서값을 1번부터 다시 매긴다 (값이 겹쳐 있어도 안전)
+  const 새순서 = CATS.slice();
+  새순서.splice(j, 0, 새순서.splice(i, 1)[0]);
+  const res = await Promise.all(새순서.map((c, k) =>
+    sb.from("categories").update({sort_order: k + 1}).eq("id", c.id)));
+  const err = res.find(r => r.error);
+  if(err){ alert("순서를 바꾸지 못했습니다: " + err.error.message); return; }
+  await loadCatsAll();
+}
+
+$("catAdd").onclick = async () => {
+  const name = prompt("추가할 분류 이름을 입력하세요");
+  if(!name || !name.trim()) return;
+  if(CATS.some(c => c.name === name.trim())){ alert("이미 있는 분류입니다."); return; }
+  const {error} = await sb.from("categories")
+    .insert({name: name.trim(), sort_order: CATS.length + 1, active: true});
+  if(error){ alert("추가하지 못했습니다: " + error.message); return; }
+  await loadCatsAll();
+};
+
+/* 신규 계정 SQL 생성 */
+const sqlStr = v => v === null || v === "" ? "null" : `'${String(v).replace(/'/g, "''")}'`;
+
+const ORG_MAP = {"케이터링":"catering", "catering":"catering",
+  "도급사":"vendor", "도급사(kts)":"vendor", "kts":"vendor", "vendor":"vendor"};
+const ROLE_MAP = {"관리자":"admin", "admin":"admin",
+  "일반":"member", "member":"member", "":"member"};
+
+/* 붙여넣은 명단을 한 줄씩 해석한다 (쉼표 또는 탭 구분) */
+function parseAccountList(txt){
+  const ok = [], bad = [], 중복 = new Set();
+  txt.split(/\r?\n/).forEach((line, i) => {
+    const raw = line.trim();
+    if(!raw || raw.startsWith("#") || raw.startsWith("--")) return;
+    const c = raw.split(/\t|,/).map(s => s.trim());
+    const [id0, name, org0, role0, pos, mail] = c;
+    const id = (id0 || "").toLowerCase();
+    const org = ORG_MAP[(org0 || "").toLowerCase()];
+    const role = ROLE_MAP[(role0 || "").toLowerCase()];
+    const 줄 = i + 1;
+
+    if(!/^[a-z0-9._-]+$/.test(id))
+      return bad.push(`${줄}행 — 아이디가 잘못됐습니다 (영문 소문자·숫자·점·밑줄만): ${esc(id0 || "비어 있음")}`);
+    if(!name)
+      return bad.push(`${줄}행 — 이름이 없습니다`);
+    if(!org)
+      return bad.push(`${줄}행 — 소속은 케이터링 또는 도급사여야 합니다: ${esc(org0 || "비어 있음")}`);
+    if(!role)
+      return bad.push(`${줄}행 — 권한은 관리자 또는 일반이어야 합니다: ${esc(role0)}`);
+    if(중복.has(id))
+      return bad.push(`${줄}행 — 아이디가 중복됩니다: ${esc(id)}`);
+    중복.add(id);
+    ok.push({id, name, org, role, pos: pos || "", mail: mail || ""});
+  });
+  return {ok, bad};
+}
+
+$("nMake").onclick = () => {
+  const {ok, bad} = parseAccountList($("nList").value);
+
+  $("nCheck").innerHTML = bad.length
+    ? `<div class="banner banner-warn" style="margin-top:12px">
+         <b>확인이 필요한 줄 ${bad.length}개</b><br>${bad.join("<br>")}</div>`
+    : "";
+
+  if(!ok.length){
+    $("nSql").classList.add("hidden"); $("nCopy").classList.add("hidden");
+    if(!bad.length) alert("명단을 입력하세요.");
+    return;
+  }
+
+  const 이미있음 = ok.filter(u => ACCTS.some(a => a.name === u.name && a.org === u.org));
+  const 값 = ok.map(u =>
+    `    (${sqlStr(u.id + LOGIN_DOMAIN)}, ${sqlStr(u.name)}, ${sqlStr(u.org)}, `
+    + `${sqlStr(u.role)}, ${sqlStr(u.pos)}, ${sqlStr(u.mail)})`).join(",\n");
+
+  $("nSql").value =
+`-- KTS 계정 ${ok.length}명 일괄 생성
+-- Supabase → SQL Editor 에 붙여넣고 Run  (여러 번 실행해도 안전)
+${ok.map(u => `--   ${u.id} / ${u.name} / ${u.org === "catering" ? "케이터링" : "도급사(KTS)"}`
+  + `${u.role === "admin" ? " / 관리자" : ""}`).join("\n")}
+
+create extension if not exists pgcrypto with schema extensions;
+
+do $$
+declare v record; uid uuid; 신버전 boolean; 만든수 int := 0;
+begin
+  select exists(select 1 from information_schema.columns
+    where table_schema='auth' and table_name='identities' and column_name='provider_id')
+  into 신버전;
+
+  for v in
+    select * from (values
+${값}
+    ) as t(email_id, name, org, role, position, email)
+  loop
+    select id into uid from auth.users where email = v.email_id;
+
+    if uid is null then
+      uid := gen_random_uuid();
+      insert into auth.users (
+        instance_id, id, aud, role, email, encrypted_password,
+        email_confirmed_at, created_at, updated_at,
+        raw_app_meta_data, raw_user_meta_data,
+        confirmation_token, recovery_token,
+        email_change, email_change_token_new, email_change_token_current
+      ) values (
+        '00000000-0000-0000-0000-000000000000', uid,
+        'authenticated', 'authenticated', v.email_id,
+        extensions.crypt('kts1234', extensions.gen_salt('bf')),
+        now(), now(), now(),
+        '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+        '', '', '', '', ''
+      );
+
+      if 신버전 then
+        insert into auth.identities (provider_id, user_id, identity_data, provider,
+          last_sign_in_at, created_at, updated_at)
+        values (uid::text, uid,
+          jsonb_build_object('sub', uid::text, 'email', v.email_id),
+          'email', now(), now(), now());
+      else
+        insert into auth.identities (id, user_id, identity_data, provider,
+          last_sign_in_at, created_at, updated_at)
+        values (uid::text, uid,
+          jsonb_build_object('sub', uid::text, 'email', v.email_id),
+          'email', now(), now(), now());
+      end if;
+
+      만든수 := 만든수 + 1;
+    end if;
+
+    insert into public.profiles (id, name, org, role, position, email)
+    values (uid, v.name, v.org, v.role, nullif(v.position,''), nullif(v.email,''))
+    on conflict (id) do update
+      set name=excluded.name, org=excluded.org, role=excluded.role,
+          position=excluded.position, email=excluded.email;
+  end loop;
+
+  raise notice '신규 계정 % 개 생성', 만든수;
+end $$;
+
+-- 확인 : 아래를 함께 실행하면 결과를 볼 수 있습니다
+select u.email as 로그인id, p.name as 이름, p.position as 직책,
+       p.org as 소속, p.role as 권한, p.email as 알림이메일,
+       (u.email_confirmed_at is not null) as 로그인가능
+from public.profiles p join auth.users u on u.id = p.id
+where u.email in (${ok.map(u => sqlStr(u.id + LOGIN_DOMAIN)).join(", ")})
+order by p.org, p.name;
+
+-- 초기 비밀번호는 전원 kts1234 입니다`;
+
+  $("nSql").classList.remove("hidden");
+  $("nCopy").classList.remove("hidden");
+
+  if(이미있음.length){
+    $("nCheck").innerHTML += `<div class="banner" style="margin-top:12px">
+      같은 이름이 이미 등록되어 있습니다 — ${이미있음.map(u => esc(u.name)).join(", ")}<br>
+      동명이인이면 그대로 진행하시고, 실수라면 해당 줄을 지워주세요.</div>`;
+  }
+  $("nSql").scrollIntoView({behavior:"smooth", block:"nearest"});
+};
+
+$("nCopy").onclick = async () => {
+  try{
+    await navigator.clipboard.writeText($("nSql").value);
+    $("nCopy").textContent = "복사됨";
+    setTimeout(() => $("nCopy").textContent = "복사", 1500);
+  }catch(e){
+    $("nSql").select();
+    alert("자동 복사가 막혀 있습니다. 선택된 내용을 Ctrl+C 로 복사하세요.");
+  }
+};
+
+/* ============================================================
+   저장공간 · 첨부 백업
+   ============================================================ */
+let ST_ROWS = [];            // 백업 대상 첨부 목록
+let ST_SIZES = {};           // 저장 경로 → 용량
+
+const mb = n => (n / 1048576).toFixed(1) + "MB";
+
+/* 스토리지 전체 목록을 훑어 경로별 용량을 구한다 */
+async function storageSizes(){
+  const map = {}; let total = 0, offset = 0;
+  for(let i = 0; i < 20; i++){
+    const {data, error} = await sb.storage.from(ATT_BUCKET)
+      .list("", {limit: 1000, offset});
+    if(error || !data || !data.length) break;
+    data.forEach(o => {
+      const s = o.metadata?.size || 0;
+      map[o.name] = s; total += s;
+    });
+    if(data.length < 1000) break;
+    offset += 1000;
+  }
+  return {map, total};
+}
+
+$("stRefresh").onclick = async () => {
+  $("stBody").innerHTML = `<p class="note">불러오는 중…</p>`;
+  const [{map, total}, at] = await Promise.all([
+    storageSizes(),
+    sb.from("attachments").select("*").order("created_at")
+  ]);
+  const atts = at.data || [];
+  const 한도 = 1073741824;                      // 무료 1GB
+  const 비율 = Math.min(100, Math.round(total / 한도 * 100));
+
+  $("stBody").innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>사용량 <b>${mb(total)}</b> / 1.0GB</span>
+        <span class="note">파일 ${atts.length}개</span>
+      </div>
+      <div style="height:9px;background:#e3e7ee;border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${비율}%;background:${비율 > 80 ? "#c2352b" : "#1e3a5f"}"></div>
+      </div>
+    </div>
+    <div class="row2" style="align-items:end">
+      <div class="field" style="margin-bottom:0">
+        <label for="stMonths">백업 대상 — 몇 개월 이전 자료</label>
+        <select id="stMonths">
+          <option value="6">6개월 이전</option>
+          <option value="12" selected>12개월 이전</option>
+          <option value="24">24개월 이전</option>
+          <option value="0">전체</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <button class="btn" id="stFind" style="width:100%">대상 찾기</button>
+      </div>
+    </div>
+    <div id="stResult"></div>`;
+
+  ST_SIZES = map;
+  $("stFind").onclick = findBackupTargets;
+};
+
+async function findBackupTargets(){
+  const 개월 = Number($("stMonths").value);
+  $("stResult").innerHTML = `<p class="note" style="margin-top:12px">찾는 중…</p>`;
+
+  const 기준 = new Date();
+  기준.setMonth(기준.getMonth() - 개월);
+
+  const [at, ps, rp, cm] = await Promise.all([
+    sb.from("attachments").select("*").order("created_at"),
+    sb.from("posts").select("id,title,category_id,flight_no,flight_date,created_at,author_id,status"),
+    sb.from("reports").select("id,post_id"),
+    sb.from("comments").select("id,post_id")
+  ]);
+  const POST = {}; (ps.data||[]).forEach(p => POST[p.id] = p);
+  const R = {}; (rp.data||[]).forEach(r => R[r.id] = r.post_id);
+  const C = {}; (cm.data||[]).forEach(c => C[c.id] = c.post_id);
+
+  ST_ROWS = (at.data || []).map(a => {
+    const pid = a.post_id || R[a.report_id] || C[a.comment_id];
+    const p = POST[pid];
+    return {...a, pid, post: p,
+      구분: a.post_id ? "업무 요청" : a.report_id ? "이행 보고" : "특이사항",
+      size: ST_SIZES[a.file_path] || 0};
+  }).filter(x => x.post && (개월 === 0 || new Date(x.post.created_at) < 기준));
+
+  const 합계 = ST_ROWS.reduce((s, x) => s + x.size, 0);
+
+  if(!ST_ROWS.length){
+    $("stResult").innerHTML = `<p class="note" style="margin-top:12px">해당하는 첨부가 없습니다.</p>`;
+    return;
+  }
+  $("stResult").innerHTML = `
+    <div class="banner" style="margin-top:14px">
+      대상 <b>${ST_ROWS.length}개</b> · 합계 <b>${mb(합계)}</b>
+    </div>
+    <p class="note" style="margin:0 0 10px">
+      <b>순서대로 진행하세요.</b><br>
+      ① 색인 문서를 내려받아 어떤 글의 첨부인지 기록을 남깁니다<br>
+      ② 파일을 내려받아 회사 공유드라이브 폴더에 보관합니다<br>
+      ③ 보관을 확인한 뒤 스토리지에서 지웁니다</p>
+    <div class="actions">
+      <button class="btn" id="stCsv">① 색인 문서 (CSV)</button>
+      <button class="btn" id="stDown">② 파일 내려받기</button>
+      <button class="btn btn-danger" id="stDel">③ 스토리지에서 삭제</button>
+    </div>
+    <p class="note" id="stProg" style="margin:10px 0 0"></p>`;
+
+  $("stCsv").onclick  = backupCsv;
+  $("stDown").onclick = backupDownload;
+  $("stDel").onclick  = backupDelete;
+}
+
+/* 저장 파일명 — 번호로 색인 문서와 맞춘다 */
+const 백업파일명 = x =>
+  `${String(x.pid).padStart(4,"0")}_${x.구분==="업무 요청"?"요청":x.구분==="이행 보고"?"보고":"특이"}_${x.file_name}`;
+
+function backupCsv(){
+  const out = [["저장 파일명","업무요청번호","제목","분류","편명","해당일자",
+                "요청 등록일","요청자","상태","첨부 구분","원본 파일명","올린 사람","올린 시각","용량(KB)"]];
+  ST_ROWS.forEach(x => {
+    const cat = CATS.find(c => c.id === x.post.category_id);
+    out.push([
+      백업파일명(x), x.pid, x.post.title, cat ? cat.name : "",
+      x.post.flight_no || "", x.post.flight_date ? fmt(x.post.flight_date, false) : "",
+      fmt(x.post.created_at), nameOf(x.post.author_id), ST[x.post.status].label,
+      x.구분, x.file_name, nameOf(x.uploader_id), fmt(x.created_at),
+      Math.round(x.size / 1024)
+    ]);
+  });
+  downloadCsv(`KTS_첨부색인_${ymNow()}.csv`, out);
+  $("stProg").textContent = "색인 문서를 내려받았습니다. 백업 폴더에 함께 보관하세요.";
+}
+
+async function backupDownload(){
+  if(!confirm(`${ST_ROWS.length}개 파일을 내려받습니다.\n`
+            + "브라우저가 여러 파일 다운로드를 허용할지 물으면 허용해주세요.\n\n"
+            + "받은 파일은 공유드라이브 폴더에 옮겨두세요.")) return;
+  const btn = $("stDown"); btn.disabled = true;
+  let 성공 = 0, 실패 = [];
+  for(let i = 0; i < ST_ROWS.length; i++){
+    const x = ST_ROWS[i];
+    $("stProg").textContent = `내려받는 중… ${i+1} / ${ST_ROWS.length}`;
+    try{
+      const {data} = await sb.storage.from(ATT_BUCKET).createSignedUrl(x.file_path, 120);
+      const res = await fetch(data.signedUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = 백업파일명(x);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      성공++;
+    }catch(e){ 실패.push(x.file_name); }
+    await new Promise(r => setTimeout(r, 350));
+  }
+  btn.disabled = false;
+  $("stProg").innerHTML = `내려받기 완료 — 성공 <b>${성공}개</b>`
+    + (실패.length ? ` · 실패 ${실패.length}개 (${실패.slice(0,3).join(", ")}…)` : "");
+}
+
+async function backupDelete(){
+  if(!confirm(`스토리지에서 ${ST_ROWS.length}개 파일을 지웁니다.\n\n`
+            + "① 색인 문서와 ② 파일을 이미 백업하셨나요?\n"
+            + "지우면 사이트에서 첨부를 열 수 없게 됩니다. (글·보고·로그는 그대로 남습니다)")) return;
+  if(!confirm("마지막 확인입니다. 되돌릴 수 없습니다.\n\n정말 삭제할까요?")) return;
+
+  const btn = $("stDel"); btn.disabled = true;
+  const paths = ST_ROWS.map(x => x.file_path);
+  const ids = ST_ROWS.map(x => x.id);
+  for(let i = 0; i < paths.length; i += 100){
+    $("stProg").textContent = `삭제 중… ${Math.min(i+100, paths.length)} / ${paths.length}`;
+    await sb.storage.from(ATT_BUCKET).remove(paths.slice(i, i+100));
+    await sb.from("attachments").delete().in("id", ids.slice(i, i+100));
+  }
+  btn.disabled = false;
+  $("stProg").textContent = `${paths.length}개를 정리했습니다. 사용량을 다시 확인해보세요.`;
+  ST_ROWS = [];
+}
+
+$("btnAcct").onclick = async () => {
+  editingAcct = null; editingCat = null;
+  $("acct").classList.remove("hidden");
+  window.scrollTo(0,0);
+  await loadAccounts();
+  await loadCatsAll();
+};
+$("aBack").onclick = async () => {
+  $("acct").classList.add("hidden");
+  // 분류 목록을 원래대로(사용 중인 것만) 되돌린다
+  const {data} = await sb.from("categories").select("*").eq("active", true).order("sort_order");
+  CATS = data || [];
+  const opts = CATS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("fCat").innerHTML = `<option value="">분류 전체</option>` + opts;
+  $("wCat").innerHTML = opts;
+  await loadList();
+};
+
+/* ============================================================
+   로그 이력 — 지시 등록부터 완료까지의 전체 흐름
+   ============================================================ */
+const LOG_COLOR = {
+  created:"#1e3a5f", read:"#3b6fd4", attached:"#69707d", mailed:"#0f766e",
+  reported:"#7c4ddb", commented:"#69707d",
+  confirmed:"#2f9e58", rejected:"#c2352b", unconfirmed:"#b45309", edited:"#b45309",
+  report_edited:"#7c4ddb", hidden:"#69707d", restored:"#69707d"
+};
+
+function buildLog(comments, reports){
+  const p = currentPost;
+  const ev = [];
+  const push = (t, kind, text, detail) =>
+    { if(t) ev.push({t:new Date(t), kind, text, detail}); };
+
+  push(p.created_at, "created", `<b>${esc(nameOf(p.author_id))}</b> 님이 업무 요청을 등록했습니다.`);
+
+  // 최초 열람만 기록 (재방문은 표시하지 않음)
+  POST_READS.forEach(r => {
+    if(r.user_id === p.author_id) return;          // 작성자 본인 열람은 제외
+    push(r.read_at, "read", `<b>${esc(nameOf(r.user_id))}</b> 님이 처음 열람했습니다.`);
+  });
+
+  // 보고 이력은 post_events 에 누적된다. 트리거 도입 전 자료는 reports 로 대체.
+  const 보고이력 = POST_EVENTS.filter(e => e.kind === "reported" || e.kind === "report_edited");
+  if(보고이력.length){
+    보고이력.forEach(e => {
+      const [머리, ...나머지] = String(e.detail || "").split("\n");
+      push(e.created_at, e.kind === "reported" ? "reported" : "report_edited",
+        `<b>${esc(nameOf(e.actor_id))}</b> 님이 이행 보고를 `
+        + `${e.kind === "reported" ? "등록" : "수정"}했습니다.`
+        + (머리 ? ` — ${esc(머리)}` : ""),
+        나머지.join(" ") || null);
+    });
+  } else {
+    reports.forEach(r => push(r.reported_at, "reported",
+      `<b>${esc(nameOf(r.reporter_id))}</b> 님이 이행 보고를 등록했습니다. — ${RESULT[r.result]}`,
+      r.result !== "done" && r.reason ? `사유: ${r.reason}` : null));
+  }
+
+  comments.forEach(c => push(c.created_at, "commented",
+    `<b>${esc(nameOf(c.author_id))}</b> 님이 특이사항을 남겼습니다.`));
+
+  ATTS.forEach(a => push(a.created_at, "attached",
+    `<b>${esc(nameOf(a.uploader_id))}</b> 님이 파일을 첨부했습니다. — ${esc(a.file_name)}`));
+
+  const DECIDE = {
+    confirmed:   "확인완료 처리했습니다.",
+    rejected:    "반려했습니다.",
+    unconfirmed: "확인완료를 취소했습니다.",
+    edited:      "내용을 수정했습니다.",
+    mailed:      "메일로 발송했습니다.",
+    hidden:      "목록에서 숨겼습니다.",
+    restored:    "숨김을 해제했습니다."
+  };
+  POST_EVENTS.filter(e => DECIDE[e.kind]).forEach(e => push(e.created_at, e.kind,
+    `<b>${esc(nameOf(e.actor_id))}</b> 님이 ${DECIDE[e.kind]}`,
+    e.kind === "rejected" && e.detail ? `사유: ${e.detail}`
+      : e.kind === "edited" && e.detail ? `변경 항목: ${e.detail}`
+      : e.kind === "mailed" && e.detail ? `받는 사람: ${e.detail}` : null));
+
+  ev.sort((a,b) => a.t - b.t);
+
+  // 확인완료 이후 발생한 활동은 누적하지 않는다
+  if(p.status === "confirmed"){
+    const done = POST_EVENTS.filter(e => e.kind === "confirmed").pop();
+    const cut = new Date(done ? done.created_at : (p.closed_at || Date.now()));
+    return {rows: ev.filter(e => e.t <= cut), closed: true, closedAt: cut};
+  }
+  return {rows: ev, closed: false};
+}
+
+function logHtml(comments, reports){
+  const {rows, closed, closedAt} = buildLog(comments, reports);
+  let h = `<div class="box"><h4>로그 이력</h4>`;
+  h += rows.map(e => `<div class="log" style="--lg:${LOG_COLOR[e.kind] || "#b9c1cd"}">
+      <div class="lt">${e.text}</div>
+      <div class="lm">${fmt(e.t)}</div>
+      ${e.detail ? `<div class="ld">${esc(e.detail)}</div>` : ""}
+    </div>`).join("");
+
+  if(closed){
+    h += `<div class="log-end">확인완료로 종료되었습니다 (${fmt(closedAt)}).
+      이후 활동은 기록하지 않습니다.</div>`;
+  } else {
+    // 미열람자 안내 — 도급사 전원 기준
+    const vendors = Object.values(PROFILES).filter(u => u.org === "vendor");
+    const seen = new Set(POST_READS.map(r => r.user_id));
+    const yet = vendors.filter(u => !seen.has(u.id));
+    if(vendors.length){
+      h += `<div class="unread"><b>도급사(KTS) 열람 ${vendors.length - yet.length} / ${vendors.length}</b>
+        ${yet.length ? "미열람 — " + yet.map(u => esc(u.name)).join(", ")
+                     : "전원 열람 완료"}</div>`;
+    }
+  }
+  return h + `</div>`;
+}
 
 /* ---------- 상세 ---------- */
 async function openDetail(id){
@@ -451,16 +1849,38 @@ async function openDetail(id){
   if(!currentPost) return;
   $("detail").classList.remove("hidden");
   $("dNo").textContent = `#${id}`;
-  $("dDel").classList.toggle("hidden", !isCatering());
   $("dBody").innerHTML = `<div class="empty">불러오는 중…</div>`;
   window.scrollTo(0,0);
 
-  const [cm, rp] = await Promise.all([
-    sb.from("comments").select("*").eq("post_id", id).order("created_at"),
-    sb.from("reports").select("*").eq("post_id", id).order("reported_at")
-  ]);
-  drawDetail(cm.data || [], rp.data || []);
+  // 열람을 먼저 기록해야 상태 전이와 로그 이력이 바로 반영된다
   await markRead(id);
+  const {data} = await sb.from("posts").select("*").eq("id", id).single();
+  if(data){
+    currentPost = data;
+    const i = POSTS.findIndex(p => p.id === id);
+    if(i >= 0) POSTS[i] = data;
+  }
+  await reloadDetailData(id);
+}
+
+/* 상세화면에 필요한 댓글·보고·첨부를 한 번에 다시 읽는다 */
+async function reloadDetailData(id){
+  const [cm, rp, rdr, ev] = await Promise.all([
+    sb.from("comments").select("*").eq("post_id", id).order("created_at"),
+    sb.from("reports").select("*").eq("post_id", id).order("reported_at"),
+    sb.from("post_reads").select("user_id,read_at").eq("post_id", id),
+    sb.from("post_events").select("*").eq("post_id", id).order("created_at")
+  ]);
+  const comments = cm.data || [], reports = rp.data || [];
+  POST_READS  = rdr.data || [];
+  POST_EVENTS = ev.data || [];
+  const rIds = reports.map(r => r.id), cIds = comments.map(c => c.id);
+  const or = [`post_id.eq.${id}`];
+  if(rIds.length) or.push(`report_id.in.(${rIds.join(",")})`);
+  if(cIds.length) or.push(`comment_id.in.(${cIds.join(",")})`);
+  const at = await sb.from("attachments").select("*").or(or.join(",")).order("created_at");
+  ATTS = at.data || [];
+  drawDetail(comments, reports);
 }
 
 async function markRead(id){
@@ -476,6 +1896,13 @@ function drawDetail(comments, reports){
   const cat = CATS.find(c => c.id === p.category_id);
   const late = isOverdue(p);
 
+  // 수정은 케이터링만, 확인완료(종결)된 건은 불가
+  $("dEdit").classList.toggle("hidden", !isCatering() || p.status === "confirmed");
+  // 숨김은 케이터링 전원, 완전 삭제는 관리자만
+  $("dHide").classList.toggle("hidden", !isCatering());
+  $("dHide").textContent = p.deleted_at ? "숨김 해제" : "숨김";
+  $("dDel") .classList.toggle("hidden", me.role !== "admin");
+
   let h = `<div class="box">
     <div class="card-top">
       <span class="st ${st.cls}">${st.label}</span>
@@ -483,6 +1910,9 @@ function drawDetail(comments, reports){
       ${p.urgency === "urgent" ? `<span class="chip chip-urgent">긴급</span>` : ""}
       ${late ? `<span class="chip chip-late">기한 초과</span>` : ""}
     </div>
+    ${p.deleted_at ? `<div class="banner" style="margin:0 0 10px">
+      숨김 처리된 항목입니다 · ${fmt(p.deleted_at)}
+      ${p.deleted_by ? ` · ${esc(nameOf(p.deleted_by))}` : ""}</div>` : ""}
     <div class="detail-title">${esc(p.title)}</div>
     <dl class="kv tnum">
       <dt>작성</dt><dd>${esc(nameOf(p.author_id))} · ${fmt(p.created_at)}</dd>
@@ -493,21 +1923,31 @@ function drawDetail(comments, reports){
       ${p.reject_reason ? `<dt>반려 사유</dt><dd>${esc(p.reject_reason)}</dd>` : ""}
     </dl>
     <div class="detail-body">${esc(p.body)}</div>
+    ${attListHtml(ATTS.filter(a => a.post_id))}
+    ${isCatering() ? `<div style="margin-top:12px">${attPickerHtml("aPost","요청 첨부 추가")}
+      <button class="btn btn-sm" id="aPostUp" style="margin-top:6px">첨부 올리기</button></div>` : ""}
   </div>`;
 
   /* 이행보고 */
-  h += `<div class="box"><h4>이행 보고</h4>`;
+  const 보고수정가능 = !isCatering() && p.status !== "confirmed" && !!currentReport;
+  h += `<div class="box">`;
+  h += 보고수정가능
+    ? `<div class="box-head"><h4>이행 보고</h4>
+         <button class="btn btn-sm" id="rEdit">수정</button></div>`
+    : `<h4>이행 보고</h4>`;
   h += reports.length ? reports.map(r => `<div class="thread">
       <div class="head"><b>${esc(nameOf(r.reporter_id))}</b>
         <span>${RESULT[r.result]} · ${fmt(r.reported_at)}</span></div>
       ${r.comment ? `<p>${esc(r.comment)}</p>` : ""}
       ${r.reason ? `<p style="color:var(--danger)">사유: ${esc(r.reason)}</p>` : ""}
+      ${attListHtml(ATTS.filter(a => a.report_id === r.id))}
     </div>`).join("")
     : `<p class="note">아직 보고가 없습니다.</p>`;
 
   if(!isCatering() && p.status !== "confirmed"){
     const ex = currentReport;
-    h += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+    h += `<div id="rEditWrap" class="${ex ? "hidden" : ""}"
+            style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
       <div class="field"><label for="rRes">이행 결과</label>
         <select id="rRes">
           <option value="done">이행완료</option>
@@ -519,33 +1959,57 @@ function drawDetail(comments, reports){
       <div class="field ${ex && ex.result !== "done" ? "" : "hidden"}" id="rReasonWrap">
         <label for="rReason">사유</label>
         <input id="rReason" placeholder="완료하지 못한 이유" value="${esc(ex?.reason || "")}"></div>
+      <div class="field" style="margin-bottom:10px">
+        <label for="aRep">사진·파일 첨부${p.photo_required ? " (사진 필요)" : ""}</label>
+        ${attPickerHtml("aRep","보고와 함께 올라갑니다")}
+      </div>
       <button class="btn btn-primary" id="rSave">${ex ? "보고 수정" : "보고 등록"}</button>
-      ${ex ? `<p class="note" style="margin:9px 0 0">이미 등록된 보고를 수정합니다. 지시 1건당 보고는 1건만 남습니다.</p>` : ""}
+      ${ex ? `<p class="note" style="margin:9px 0 0">이미 등록된 보고를 수정합니다. 업무 요청 1건당 보고는 1건만 남습니다.</p>` : ""}
     </div>`;
   }
   h += `</div>`;
 
   /* 케이터링 확인 */
   if(isCatering() && p.status !== "confirmed"){
+    const 보낸적 = POST_EVENTS.filter(e => e.kind === "mailed").pop();
     h += `<div class="box"><h4>확인 처리</h4>
       <div class="actions">
         <button class="btn btn-primary" id="cOk">확인완료</button>
         <button class="btn btn-danger" id="cNo">반려</button>
+        <button class="btn" id="cMail">✉ 메일 발송</button>
+        <button class="btn btn-sm" id="cMailTest">시험 발송</button>
       </div>
       <p class="note" style="margin:10px 0 0">확인완료 시 진행 중 목록에서 빠집니다.</p>
+      <p class="note" style="margin:4px 0 0">${보낸적
+        ? `메일을 이미 보냈습니다 — ${esc(nameOf(보낸적.actor_id))} · ${fmt(보낸적.created_at)}`
+        : "메일 발송은 도급사(KTS) 전원에게 한 번에 보냅니다."}<br>
+        시험 발송은 지정한 주소 한 곳으로만 가고 이력에 남지 않습니다.</p>
     </div>`;
   }
+  if(isCatering() && p.status === "confirmed"){
+    h += `<div class="box"><h4>확인 처리</h4>
+      <div class="actions"><button class="btn" id="cUndo">완료 취소</button></div>
+      <p class="note" style="margin:10px 0 0">잘못 처리한 경우 되돌립니다.
+        취소하면 확인 요망 상태로 돌아가고, 도급사(KTS)가 보고를 다시 수정할 수 있습니다.
+        취소 사실은 로그 이력에 남습니다.</p>
+    </div>`;
+  }
+
+  /* 로그 이력 */
+  h += logHtml(comments, reports);
 
   /* 특이사항 */
   h += `<div class="box"><h4>특이사항 · 활동 기록</h4>`;
   h += comments.length ? comments.map(c => `<div class="thread">
       <div class="head"><b>${esc(nameOf(c.author_id))}</b><span>${fmt(c.created_at)}</span></div>
-      <p>${esc(c.body)}</p></div>`).join("")
+      <p>${esc(c.body)}</p>
+      ${attListHtml(ATTS.filter(a => a.comment_id === c.id))}</div>`).join("")
     : `<p class="note">등록된 내용이 없습니다.</p>`;
   h += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
       <div class="field"><textarea id="cBody" style="min-height:70px"
         placeholder="특이사항이나 진행 상황을 남겨주세요"></textarea></div>
-      <button class="btn" id="cSave">등록</button>
+      ${attPickerHtml("aCmt","이 글과 함께 올라갑니다")}
+      <button class="btn" id="cSave" style="margin-top:8px">등록</button>
     </div></div>`;
 
   $("dBody").innerHTML = h;
@@ -556,9 +2020,31 @@ function drawDetail(comments, reports){
     res.onchange = () => $("rReasonWrap").classList.toggle("hidden", res.value === "done");
   }
   if($("rSave")) $("rSave").onclick = saveReport;
+  if($("rEdit")) $("rEdit").onclick = () => {
+    const w = $("rEditWrap"), 열림 = !w.classList.contains("hidden");
+    w.classList.toggle("hidden");
+    $("rEdit").textContent = 열림 ? "수정" : "닫기";
+    if(!열림) w.scrollIntoView({behavior:"smooth", block:"nearest"});
+  };
   if($("cOk"))   $("cOk").onclick   = () => decide("confirmed");
   if($("cNo"))   $("cNo").onclick   = () => decide("rejected");
+  if($("cUndo")) $("cUndo").onclick = () => undoConfirm(reports.length > 0);
+  if($("cMail")) $("cMail").onclick = () => sendMail(false);
+  if($("cMailTest")) $("cMailTest").onclick = () => sendMail(true);
+  if($("aPostUp")) $("aPostUp").onclick = uploadPostAtt;
   $("cSave").onclick = saveComment;
+  bindAttEvents($("dBody"));
+}
+
+/* 지시글에 첨부만 추가 (케이터링) */
+async function uploadPostAtt(){
+  const inp = $("aPost");
+  if(!inp.files.length){ alert("파일을 선택하세요."); return; }
+  const btn = $("aPostUp");
+  btn.disabled = true; btn.textContent = "올리는 중…";
+  const failed = await uploadFiles(inp.files, {post_id: currentPost.id}, "instruction");
+  if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
+  await refreshDetail();
 }
 
 async function saveReport(){
@@ -566,16 +2052,32 @@ async function saveReport(){
   const comment = $("rCmt").value.trim();
   const reason = $("rReason") ? $("rReason").value.trim() : "";
   if(result !== "done" && !reason){ alert("사유를 입력하세요."); return; }
-  $("rSave").disabled = true;
+
+  // 사진 회신 필요 지시 — 첨부가 하나도 없으면 경고
+  const picked = $("aRep") ? $("aRep").files : [];
+  if(currentPost.photo_required && !picked.length){
+    const already = ATTS.some(a => a.report_id && a.report_id === currentReport?.id);
+    if(!already && !confirm("이 업무 요청은 사진 회신이 필요합니다.\n사진 없이 보고할까요?")) return;
+  }
+
+  const btn = $("rSave");
+  btn.disabled = true; btn.textContent = "저장 중…";
   const payload = {
     result, comment: comment || null, reason: result === "done" ? null : reason,
     reporter_id: me.id, reported_at: new Date().toISOString()
   };
-  const {error} = currentReport
-    ? await sb.from("reports").update(payload).eq("id", currentReport.id)
-    : await sb.from("reports").insert({post_id: currentPost.id, ...payload});
-  $("rSave").disabled = false;
-  if(error){ alert("등록하지 못했습니다: " + error.message); return; }
+  const {data, error} = currentReport
+    ? await sb.from("reports").update(payload).eq("id", currentReport.id).select().single()
+    : await sb.from("reports").insert({post_id: currentPost.id, ...payload}).select().single();
+  if(error){
+    btn.disabled = false; btn.textContent = currentReport ? "보고 수정" : "보고 등록";
+    alert("등록하지 못했습니다: " + error.message); return;
+  }
+  if(picked.length){
+    btn.textContent = "첨부 올리는 중…";
+    const failed = await uploadFiles(picked, {report_id: data.id}, "evidence");
+    if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
+  }
   await refreshDetail();
 }
 
@@ -593,14 +2095,90 @@ async function decide(status){
   await refreshDetail();
 }
 
+/* ---------- 메일 발송 ---------- */
+async function sendMail(시험){
+  let 시험주소 = null;
+  if(시험){
+    시험주소 = prompt("시험 메일을 받을 주소를 입력하세요.\n이 주소로만 가고 도급사에게는 가지 않습니다.",
+                     me.email || "");
+    if(!시험주소) return;
+    시험주소 = 시험주소.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(시험주소)){ alert("이메일 형식이 올바르지 않습니다."); return; }
+  } else {
+    const 보낸적 = POST_EVENTS.filter(e => e.kind === "mailed").pop();
+    if(!confirm(보낸적
+      ? `이미 ${fmt(보낸적.created_at)}에 발송했습니다.\n도급사(KTS) 전원에게 다시 보낼까요?`
+      : "도급사(KTS) 전원에게 이 업무 요청을 메일로 보낼까요?")) return;
+  }
+
+  const btn = 시험 ? $("cMailTest") : $("cMail");
+  const 라벨 = 시험 ? "시험 발송" : "✉ 메일 발송";
+  btn.disabled = true; btn.textContent = "보내는 중…";
+
+  const {data, error} = await sb.rpc("send_post_mail",
+    {p_post_id: currentPost.id, p_test_email: 시험주소});
+  if(error){
+    btn.disabled = false; btn.textContent = 라벨;
+    alert("발송하지 못했습니다.\n\n" + error.message);
+    return;
+  }
+
+  // 실제 전송 결과는 잠시 뒤에 확인된다
+  btn.textContent = "결과 확인 중…";
+  let 결과 = null;
+  for(let i = 0; i < 6; i++){
+    await new Promise(r => setTimeout(r, 1200));
+    const {data: st} = await sb.rpc("check_mail_result", {p_request_id: data.request_id});
+    if(st && st.state !== "pending"){ 결과 = st; break; }
+  }
+
+  if(!결과)
+    alert(`발송을 요청했습니다. (${data.names})\n\n`
+        + "전송 결과 확인이 늦어지고 있습니다. 잠시 뒤 메일함을 확인해주세요.");
+  else if(결과.state === "ok")
+    alert(시험 ? `시험 메일을 보냈습니다.\n${data.names}\n\n도급사에게는 가지 않았습니다.`
+               : `${data.count}명에게 메일을 보냈습니다.\n${data.names}`);
+  else
+    alert("메일 서버가 거부했습니다.\n\n"
+        + `응답 코드 ${결과.status}\n${결과.message || ""}\n\n`
+        + (결과.status === 401 ? "→ API 키를 확인하세요."
+         : 결과.status === 400 ? "→ 발신 주소가 Brevo에서 인증되었는지 확인하세요." : ""));
+
+  await refreshDetail();
+}
+
+/* 확인완료 되돌리기 — 보고가 있으면 확인 요망, 없으면 진행 중으로 */
+async function undoConfirm(hasReport){
+  if(!confirm("확인완료를 취소할까요?\n취소한 사람과 시각이 로그 이력에 남습니다.")) return;
+  $("cUndo").disabled = true;
+  const {error} = await sb.from("posts")
+    .update({status: hasReport ? "reported" : "read", closed_at: null})
+    .eq("id", currentPost.id);
+  if(error){
+    $("cUndo").disabled = false;
+    alert("되돌리지 못했습니다: " + error.message); return;
+  }
+  await refreshDetail();
+}
+
 async function saveComment(){
   const body = $("cBody").value.trim();
-  if(!body) return;
-  $("cSave").disabled = true;
-  const {error} = await sb.from("comments")
-    .insert({post_id: currentPost.id, author_id: me.id, body});
-  $("cSave").disabled = false;
-  if(error){ alert("등록하지 못했습니다: " + error.message); return; }
+  const picked = $("aCmt") ? $("aCmt").files : [];
+  if(!body && !picked.length){ alert("내용을 입력하거나 파일을 첨부하세요."); return; }
+  const btn = $("cSave");
+  btn.disabled = true; btn.textContent = "등록 중…";
+  const {data, error} = await sb.from("comments")
+    .insert({post_id: currentPost.id, author_id: me.id, body: body || "(첨부 파일)"})
+    .select().single();
+  if(error){
+    btn.disabled = false; btn.textContent = "등록";
+    alert("등록하지 못했습니다: " + error.message); return;
+  }
+  if(picked.length){
+    btn.textContent = "첨부 올리는 중…";
+    const failed = await uploadFiles(picked, {comment_id: data.id}, "etc");
+    if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
+  }
   await refreshDetail();
 }
 
@@ -610,11 +2188,7 @@ async function refreshDetail(){
   currentPost = data;
   const idx = POSTS.findIndex(p => p.id === id);
   if(idx >= 0) POSTS[idx] = data;
-  const [cm, rp] = await Promise.all([
-    sb.from("comments").select("*").eq("post_id", id).order("created_at"),
-    sb.from("reports").select("*").eq("post_id", id).order("reported_at")
-  ]);
-  drawDetail(cm.data || [], rp.data || []);
+  await reloadDetailData(id);
   await markRead(id);
 }
 
@@ -622,8 +2196,27 @@ $("dBack").onclick = async () => {
   $("detail").classList.add("hidden");
   await loadList();
 };
+$("dHide").onclick = async () => {
+  const 숨김중 = !!currentPost.deleted_at;
+  if(!confirm(숨김중
+    ? "숨김을 해제해 목록에 다시 표시할까요?"
+    : "이 업무 요청을 목록에서 숨길까요?\n\n"
+      + "자료는 지워지지 않고, 관리자가 언제든 되돌릴 수 있습니다.")) return;
+  const {error} = await sb.from("posts").update({
+    deleted_at: 숨김중 ? null : new Date().toISOString(),
+    deleted_by: 숨김중 ? null : me.id
+  }).eq("id", currentPost.id);
+  if(error){ alert("처리하지 못했습니다: " + error.message); return; }
+  if(숨김중){ await refreshDetail(); return; }
+  $("detail").classList.add("hidden");
+  await loadList();
+};
+
 $("dDel").onclick = async () => {
-  if(!confirm("이 지시를 삭제할까요? 보고와 댓글도 함께 삭제됩니다.")) return;
+  if(!confirm("완전히 삭제하면 되돌릴 수 없습니다.\n\n"
+    + "보고 · 특이사항 · 첨부파일 · 열람기록 · 로그 이력이 모두 사라집니다.\n"
+    + "보통은 '숨김'으로 충분합니다.\n\n정말 삭제할까요?")) return;
+  if(!confirm(`마지막 확인입니다.\n\n"${currentPost.title}"\n\n영구 삭제할까요?`)) return;
   const {error} = await sb.from("posts").delete().eq("id", currentPost.id);
   if(error){ alert("삭제하지 못했습니다: " + error.message); return; }
   $("detail").classList.add("hidden");
@@ -631,31 +2224,101 @@ $("dDel").onclick = async () => {
 };
 
 /* ---------- 글쓰기 ---------- */
-$("fabNew").onclick = () => {
-  ["wTitle","wFlt","wFdate","wDue","wBody"].forEach(k => $(k).value = "");
-  $("wPhoto").checked = false; $("wUrg").value = "normal"; $("wErr").textContent = "";
-  $("write").classList.remove("hidden"); window.scrollTo(0,0);
+let editingId = null;        // null = 신규 등록, 숫자 = 해당 건 수정 중
+
+/* datetime-local 입력칸에 넣을 형식으로 변환 */
+const toLocalInput = ts => {
+  if(!ts) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`
+       + `T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
+function openWrite(p){
+  editingId = p ? p.id : null;
+  $("wTitle").value = p ? (p.title || "") : "";
+  $("wBody").value  = p ? (p.body  || "") : "";
+  $("wCat").value   = p && p.category_id ? String(p.category_id) : ($("wCat").options[0]?.value || "");
+  $("wUrg").value   = p ? p.urgency : "normal";
+  $("wFlt").value   = p ? (p.flight_no || "") : "";
+  $("wFdate").value = p ? (p.flight_date || "") : "";
+  $("wDue").value   = p ? toLocalInput(p.due_at) : "";
+  $("wPhoto").checked = p ? !!p.photo_required : false;
+  $("wErr").textContent = "";
+  $("aNew").value = "";
+
+  $("wHead").textContent = p ? `업무 요청 수정  #${p.id}` : "업무 요청 등록";
+  $("wSave").textContent = p ? "수정 저장" : "등록";
+  $("aNewHint").textContent = p
+    ? `여기서 고른 파일은 기존 첨부에 추가됩니다 · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB`
+    : `최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB (사진은 자동으로 용량을 줄여 올립니다)`;
+
+  $("write").classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+
+$("fabNew").onclick = () => openWrite(null);
+$("dEdit").onclick  = () => {
+  if(currentPost.status === "confirmed"){
+    alert("확인완료된 건은 수정할 수 없습니다.\n수정하려면 먼저 완료 취소를 하세요.");
+    return;
+  }
+  openWrite(currentPost);
 };
 $("wBack").onclick = $("wCancel").onclick = () => $("write").classList.add("hidden");
 
 $("wSave").onclick = async () => {
   const title = $("wTitle").value.trim(), body = $("wBody").value.trim();
-  if(!title || !body){ $("wErr").textContent = "제목과 지시 내용은 필수입니다."; return; }
-  $("wSave").disabled = true;
-  const {error} = await sb.from("posts").insert({
+  if(!title || !body){ $("wErr").textContent = "제목과 요청 내용은 필수입니다."; return; }
+
+  const 수정 = editingId !== null;
+  const payload = {
     title, body,
     category_id: Number($("wCat").value) || null,
     urgency: $("wUrg").value,
     flight_no: $("wFlt").value.trim() || null,
     flight_date: $("wFdate").value || null,
     due_at: $("wDue").value ? new Date($("wDue").value).toISOString() : null,
-    photo_required: $("wPhoto").checked,
-    author_id: me.id
-  });
-  $("wSave").disabled = false;
-  if(error){ $("wErr").textContent = "등록하지 못했습니다: " + error.message; return; }
+    photo_required: $("wPhoto").checked
+  };
+  const 원래라벨 = 수정 ? "수정 저장" : "등록";
+  $("wSave").disabled = true; $("wSave").textContent = 수정 ? "저장 중…" : "등록 중…";
+
+  const {data, error} = 수정
+    ? await sb.from("posts").update(payload).eq("id", editingId).select().single()
+    : await sb.from("posts").insert({...payload, author_id: me.id}).select().single();
+
+  if(error){
+    $("wSave").disabled = false; $("wSave").textContent = 원래라벨;
+    $("wErr").textContent = (수정 ? "수정하지 못했습니다: " : "등록하지 못했습니다: ") + error.message;
+    return;
+  }
+  if($("aNew").files.length){
+    $("wSave").textContent = "첨부 올리는 중…";
+    const failed = await uploadFiles($("aNew").files, {post_id: data.id}, "instruction");
+    if(failed.length) alert("저장은 됐지만 아래 파일은 올리지 못했습니다:\n" + failed.join("\n"));
+  }
+  $("wSave").disabled = false; $("wSave").textContent = 원래라벨;
   $("write").classList.add("hidden");
+
+  if(수정){
+    editingId = null;
+    await refreshDetail();          // 상세 화면으로 복귀
+    return;
+  }
+
+  curMonth = ymNow();               // 등록 직후 방금 올린 글이 보이도록 당월로 복귀
   await loadList();
+
+  // 등록 직후 바로 메일을 보낼 수 있게 물어본다
+  if(confirm("등록했습니다.\n\n도급사(KTS) 전원에게 메일로 알릴까요?\n\n"
+           + "아니오를 눌러도 나중에 상세 화면의 [✉ 메일 발송] 버튼으로 보낼 수 있습니다.")){
+    const r = await sb.rpc("send_post_mail", {p_post_id: data.id, p_test_email: null});
+    if(r.error) alert("메일을 보내지 못했습니다.\n\n" + r.error.message
+                    + "\n\n등록은 정상 완료됐습니다. 상세 화면에서 다시 시도해주세요.");
+    else alert(`${r.data.count}명에게 메일을 보냈습니다.\n${r.data.names}`);
+    await loadList();
+  }
 };
 </script>
 </body>
