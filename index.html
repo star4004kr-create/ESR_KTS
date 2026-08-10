@@ -673,7 +673,7 @@ async function start(){
   if(me.role === "admin") $("btnAcct").classList.remove("hidden");
 
   const [{data:pl}, {data:cl}] = await Promise.all([
-    sb.from("profiles").select("id,name,org"),
+    sb.from("profiles").select("id,name,org,active"),
     sb.from("categories").select("*").eq("active", true).order("sort_order")
   ]);
   (pl||[]).forEach(p => PROFILES[p.id] = p);
@@ -2050,8 +2050,9 @@ function logHtml(comments, reports){
     h += `<div class="log-end">확인완료로 종료되었습니다 (${fmt(closedAt)}).
       이후 활동은 기록하지 않습니다.</div>`;
   } else {
-    // 미열람자 안내 — 도급사 전원 기준
-    const vendors = Object.values(PROFILES).filter(u => u.org === "vendor");
+    // 미열람자 안내 — 사용 중인 도급사 기준 (중지된 계정은 세지 않는다)
+    const vendors = Object.values(PROFILES)
+      .filter(u => u.org === "vendor" && u.active !== false);
     const seen = new Set(POST_READS.map(r => r.user_id));
     const yet = vendors.filter(u => !seen.has(u.id));
     if(vendors.length){
