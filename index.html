@@ -121,7 +121,17 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
 .att-pick input[type=file]{font-size:13px; max-width:100%}
 .att-hint{font-size:12px; color:var(--muted); margin:6px 0 0}
 .att-queue{font-size:12.5px; color:var(--muted); margin:6px 0 0}
+.att-queue:empty{display:none}
 .att-queue b{color:var(--ink); font-weight:600}
+.att-q{display:flex; align-items:center; gap:8px; padding:5px 0 4px;
+  border-bottom:1px solid var(--line)}
+.att-q:last-of-type{border-bottom:0}
+.att-q .nm{flex:1; min-width:0; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.att-q .sz{white-space:nowrap}
+.att-q .del{border:0; background:transparent; color:var(--muted);
+  font-size:16px; padding:0 4px; line-height:1; cursor:pointer}
+.att-q .del:hover{color:var(--danger)}
 
 /* ---------- 목록 카드 ---------- */
 .card{
@@ -459,6 +469,7 @@ icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
     <div class="field">
       <label for="aNew">첨부파일</label>
       <div class="att-pick"><input type="file" id="aNew" multiple></div>
+      <div class="att-queue" id="aNewQ"></div>
       <p class="att-hint" id="aNewHint"></p>
     </div>
     <div class="actions">
@@ -990,7 +1001,74 @@ function attPickerHtml(inputId, label){
   return `<div class="att-pick">
       <input type="file" id="${inputId}" multiple>
     </div>
-    <p class="att-hint">${label} · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB (사진은 자동으로 용량을 줄여 올립니다)</p>`;
+    <div class="att-queue" id="${inputId}Q"></div>
+    <p class="att-hint">${label} · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB · 파일 선택을 여러 번 눌러 하나씩 추가할 수 있습니다 (사진은 자동으로 용량을 줄여 올립니다)</p>`;
+}
+
+/* ============================================================
+   선택 파일 누적 큐
+   input[type=file]의 FileList는 다시 고르면 이전 선택이 버려진다.
+   그래서 고른 파일을 JS 배열에 누적해 두고, 저장할 때 그 배열을 올린다.
+   ============================================================ */
+const ATT_QUEUE = {};                    // 입력칸 id → File[]
+
+function attQ(id){
+  if(!ATT_QUEUE[id]) ATT_QUEUE[id] = [];
+  return ATT_QUEUE[id];
+}
+function attQClear(id){ ATT_QUEUE[id] = []; attQDraw(id); }
+
+const sizeText = b => b >= 1048576
+  ? (b / 1048576).toFixed(1) + "MB"
+  : Math.max(1, Math.round(b / 1024)) + "KB";
+
+/* 큐 목록 그리기 */
+function attQDraw(id){
+  const box = $(id + "Q");
+  if(!box) return;
+  const q = attQ(id);
+  if(!q.length){ box.innerHTML = ""; return; }
+  box.innerHTML = `<b>선택한 파일 ${q.length}/${ATT_MAX_CNT}개</b>`
+    + q.map((f, i) => `<div class="att-q">
+        <span class="nm">${esc(f.name)}</span>
+        <span class="sz">${sizeText(f.size)}</span>
+        <button type="button" class="del" data-qdel="${id}:${i}" title="목록에서 빼기">×</button>
+      </div>`).join("")
+    + `<button type="button" class="btn btn-sm" data-qclr="${id}"
+         style="margin-top:7px">모두 빼기</button>`;
+  box.querySelectorAll("[data-qdel]").forEach(el => el.onclick = () => {
+    const p = el.dataset.qdel.split(":");
+    attQ(p[0]).splice(Number(p[1]), 1);
+    attQDraw(p[0]);
+  });
+  box.querySelectorAll("[data-qclr]").forEach(el =>
+    el.onclick = () => attQClear(el.dataset.qclr));
+}
+
+/* 파일 선택칸 하나를 큐에 연결한다. 여러 번 눌러도 이전 선택이 유지된다. */
+function bindPicker(id){
+  const inp = $(id);
+  if(!inp) return;
+  if(!inp.dataset.qbound){
+    inp.dataset.qbound = "1";
+    inp.onchange = () => {
+      const q = attQ(id);
+      const over = [];
+      Array.from(inp.files || []).forEach(f => {
+        const dup = q.some(x => x.name === f.name && x.size === f.size
+                             && x.lastModified === f.lastModified);
+        if(dup) return;
+        if(q.length >= ATT_MAX_CNT){ over.push(f.name); return; }
+        q.push(f);
+      });
+      inp.value = "";                    // 같은 파일을 다시 고를 수 있게 비워 둔다
+      attQDraw(id);
+      if(over.length)
+        alert(`한 번에 ${ATT_MAX_CNT}개까지만 올릴 수 있습니다.\n\n제외된 파일:\n`
+              + over.join("\n"));
+    };
+  }
+  attQDraw(id);
 }
 
 /* 첨부 링크·삭제 버튼 연결 (drawDetail 이후 호출) */
@@ -1002,6 +1080,7 @@ function bindAttEvents(root){
   });
   root.querySelectorAll("[data-attdel]").forEach(el =>
     el.onclick = () => deleteAttachment(Number(el.dataset.attdel)));
+  root.querySelectorAll("input[type=file][id]").forEach(el => bindPicker(el.id));
 }
 
 /* ============================================================
@@ -2071,6 +2150,7 @@ async function openDetail(id){
   $("detail").classList.remove("hidden");
   $("dNo").textContent = `#${id}`;
   $("dBody").innerHTML = `<div class="empty">불러오는 중…</div>`;
+  ["aPost","aRep","aCmt"].forEach(k => { ATT_QUEUE[k] = []; });
   window.scrollTo(0,0);
 
   // 열람을 먼저 기록해야 상태 전이와 로그 이력이 바로 반영된다
@@ -2259,12 +2339,13 @@ function drawDetail(comments, reports){
 
 /* 지시글에 첨부만 추가 (케이터링) */
 async function uploadPostAtt(){
-  const inp = $("aPost");
-  if(!inp.files.length){ alert("파일을 선택하세요."); return; }
+  const picked = attQ("aPost");
+  if(!picked.length){ alert("파일을 선택하세요."); return; }
   const btn = $("aPostUp");
   btn.disabled = true; btn.textContent = "올리는 중…";
-  const failed = await uploadFiles(inp.files, {post_id: currentPost.id}, "instruction");
+  const failed = await uploadFiles(picked, {post_id: currentPost.id}, "instruction");
   if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
+  attQClear("aPost");
   await refreshDetail();
 }
 
@@ -2275,7 +2356,7 @@ async function saveReport(){
   if(result !== "done" && !reason){ alert("사유를 입력하세요."); return; }
 
   // 사진 회신 필요 지시 — 첨부가 하나도 없으면 경고
-  const picked = $("aRep") ? $("aRep").files : [];
+  const picked = attQ("aRep");
   if(currentPost.photo_required && !picked.length){
     const already = ATTS.some(a => a.report_id && a.report_id === currentReport?.id);
     if(!already && !confirm("이 업무 요청은 사진 회신이 필요합니다.\n사진 없이 보고할까요?")) return;
@@ -2299,6 +2380,7 @@ async function saveReport(){
     const failed = await uploadFiles(picked, {report_id: data.id}, "evidence");
     if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
   }
+  attQClear("aRep");
   await refreshDetail();
 }
 
@@ -2359,11 +2441,22 @@ async function sendMail(시험){
   else if(결과.state === "ok")
     alert(시험 ? `시험 메일을 보냈습니다.\n${data.names}\n\n도급사에게는 가지 않았습니다.`
                : `${data.count}명에게 메일을 보냈습니다.\n${data.names}`);
-  else
+  else {
+    const 응답 = 결과.message || "";
+    const IP차단 = 결과.status === 401 && /IP\s*address/i.test(응답);
+    const 안내 = IP차단
+      ? "→ API 키 문제가 아닙니다.\n"
+        + "  Brevo의 '승인된 IP(Authorised IPs)' 보안 기능이 발송 서버를 막고 있습니다.\n"
+        + "  Brevo 로그인 → 위 링크(app.brevo.com/security/authorised_ips) 에서\n"
+        + "  IP 인증 기능을 끄면 해결됩니다.\n\n"
+        + "  발송은 Supabase 서버에서 나가고 그 IP는 고정이 아니므로,\n"
+        + "  IP를 하나 등록하는 방식은 나중에 다시 막힙니다."
+      : 결과.status === 401 ? "→ API 키를 확인하세요."
+      : 결과.status === 400 ? "→ 발신 주소가 Brevo에서 인증되었는지 확인하세요."
+      : "";
     alert("메일 서버가 거부했습니다.\n\n"
-        + `응답 코드 ${결과.status}\n${결과.message || ""}\n\n`
-        + (결과.status === 401 ? "→ API 키를 확인하세요."
-         : 결과.status === 400 ? "→ 발신 주소가 Brevo에서 인증되었는지 확인하세요." : ""));
+        + `응답 코드 ${결과.status}\n${응답}\n\n` + 안내);
+  }
 
   await refreshDetail();
 }
@@ -2384,7 +2477,7 @@ async function undoConfirm(hasReport){
 
 async function saveComment(){
   const body = $("cBody").value.trim();
-  const picked = $("aCmt") ? $("aCmt").files : [];
+  const picked = attQ("aCmt");
   if(!body && !picked.length){ alert("내용을 입력하거나 파일을 첨부하세요."); return; }
   const btn = $("cSave");
   btn.disabled = true; btn.textContent = "등록 중…";
@@ -2400,6 +2493,7 @@ async function saveComment(){
     const failed = await uploadFiles(picked, {comment_id: data.id}, "etc");
     if(failed.length) alert("올리지 못한 파일:\n" + failed.join("\n"));
   }
+  attQClear("aCmt");
   await refreshDetail();
 }
 
@@ -2467,6 +2561,8 @@ function openWrite(p){
   $("wPhoto").checked = p ? !!p.photo_required : false;
   $("wErr").textContent = "";
   $("aNew").value = "";
+  attQClear("aNew");
+  bindPicker("aNew");
 
   $("wHead").textContent = p ? `업무 요청 수정  #${p.id}` : "업무 요청 등록";
   $("wSave").textContent = p ? "수정 저장" : "등록";
@@ -2514,10 +2610,11 @@ $("wSave").onclick = async () => {
     $("wErr").textContent = (수정 ? "수정하지 못했습니다: " : "등록하지 못했습니다: ") + error.message;
     return;
   }
-  if($("aNew").files.length){
+  if(attQ("aNew").length){
     $("wSave").textContent = "첨부 올리는 중…";
-    const failed = await uploadFiles($("aNew").files, {post_id: data.id}, "instruction");
+    const failed = await uploadFiles(attQ("aNew"), {post_id: data.id}, "instruction");
     if(failed.length) alert("저장은 됐지만 아래 파일은 올리지 못했습니다:\n" + failed.join("\n"));
+    attQClear("aNew");
   }
   $("wSave").disabled = false; $("wSave").textContent = 원래라벨;
   $("write").classList.add("hidden");
