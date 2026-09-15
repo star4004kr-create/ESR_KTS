@@ -365,6 +365,42 @@ dl.kv dd{margin:0}
 .thread .head b{font-size:13.5px}
 .thread .head span{font-size:12px; color:var(--muted)}
 .thread p{margin:0; white-space:pre-wrap; font-size:14px}
+
+/* 이행·처리 회신 — 일반 글과 확실히 구분되게 */
+.repbox{border:1px solid #c9d4e4; border-left:4px solid var(--brand); background:#fbfcfe}
+.repbox > h4{color:var(--brand)}
+.rep{border-top:0; padding:13px 14px; margin:0 0 9px;
+  background:var(--paper); border:1px solid var(--line);
+  border-left:4px solid var(--rr,var(--line)); border-radius:9px}
+.rep:last-child{margin-bottom:0}
+.rep .head{align-items:center; gap:9px; margin-bottom:7px; flex-wrap:wrap}
+.rep .head b{font-size:14px}
+.rep .head .when{font-size:12px; color:var(--muted); margin-left:auto}
+.repbadge{font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:99px;
+  background:var(--rrs,#eef1f6); color:var(--rr,#4a5567)}
+.rep p{font-size:14px; line-height:1.65}
+.rep .why{margin-top:8px; padding:9px 11px; border-radius:8px;
+  background:var(--danger-soft); color:var(--danger); font-size:13.5px; font-weight:500}
+.rep-ok  {--rr:#2f7d4f; --rrs:#e4f2ea}
+.rep-part{--rr:#b07908; --rrs:#fbf0d8}
+.rep-no  {--rr:#b4302a; --rrs:#fae8e6}
+.repnone{padding:16px; text-align:center; color:var(--muted); font-size:13.5px;
+  background:#f6f8fb; border:1px dashed var(--line); border-radius:9px}
+
+/* 등록 화면 옵션 토글 */
+.optwrap{display:flex; flex-direction:column; gap:8px; margin-bottom:14px}
+.opt{display:flex; gap:11px; align-items:flex-start; padding:12px 13px;
+  border:1px solid var(--line); border-radius:var(--radius);
+  background:var(--paper); cursor:pointer; user-select:none}
+.opt:hover{border-color:#b9c1cd}
+.opt input{width:20px; height:20px; margin:2px 0 0; flex:0 0 20px;
+  accent-color:var(--brand); cursor:pointer}
+.opt .om{min-width:0}
+.opt .om b{display:block; font-size:14.5px; font-weight:600}
+.opt .om span{display:block; font-size:12.5px; color:var(--muted); margin-top:2px}
+.opt.on{border-color:var(--brand); background:var(--brand-soft)}
+.opt.apv.on{border-color:#c98a00; background:#fffaf0}
+.opt.apv.on .om b{color:#8a6100}
 .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px}
 
 /* ---------- 상태 색 ---------- */
@@ -605,23 +641,24 @@ icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
     </div>
     <div class="field"><label for="wDue" id="wDueLab">이행 기한</label><input id="wDue" type="datetime-local"></div>
     <div class="field"><label for="wBody">요청 내용</label><textarea id="wBody"></textarea></div>
-    <div class="field" style="display:flex;align-items:center;gap:8px">
-      <input type="checkbox" id="wPhoto" style="width:auto">
-      <label for="wPhoto" style="margin:0">사진 회신 필요</label>
-    </div>
-    <div class="field hidden" id="wApvWrap">
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="wApprove" style="width:auto">
-        <label for="wApprove" style="margin:0">파트장 결재 필요</label>
-      </div>
-      <p class="note" style="margin:6px 0 0">
-        체크하면 파트장 승인 전까지 도급사(KTS)에게 보이지 않고 메일도 나가지 않습니다.</p>
-    </div>
+
     <div class="field">
       <label for="aNew">첨부파일</label>
       <div class="att-pick"><input type="file" id="aNew" multiple></div>
       <div class="att-queue" id="aNewQ"></div>
       <p class="att-hint" id="aNewHint"></p>
+    </div>
+    <div class="optwrap">
+      <label class="opt" id="wPhotoOpt">
+        <input type="checkbox" id="wPhoto">
+        <span class="om"><b>사진 회신 필요</b>
+          <span>처리 결과를 사진으로 함께 올려달라고 요청합니다</span></span>
+      </label>
+      <label class="opt apv hidden" id="wApvWrap">
+        <input type="checkbox" id="wApprove">
+        <span class="om"><b>파트장 결재 필요</b>
+          <span>파트장이 승인하기 전에는 도급사(KTS)에게 보이지 않고 메일도 나가지 않습니다</span></span>
+      </label>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="wSave">등록</button>
@@ -2825,19 +2862,24 @@ function drawDetail(comments, reports){
 
   /* 이행보고 */
   const 보고수정가능 = isPerformer(p) && p.status !== "confirmed" && !!currentReport;
-  h += `<div class="box">`;
+  const RCLS = {done:"rep-ok", partial:"rep-part", unable:"rep-no"};
+  h += `<div class="box repbox">`;
   h += 보고수정가능
     ? `<div class="box-head"><h4>${D(p).rep}</h4>
          <button class="btn btn-sm" id="rEdit">수정</button></div>`
     : `<h4>${D(p).rep}</h4>`;
-  h += reports.length ? reports.map(r => `<div class="thread">
-      <div class="head"><b>${esc(nameOf(r.reporter_id))}</b>
-        <span>${D(p).res[r.result]} · ${fmt(r.reported_at)}</span></div>
+  h += reports.length ? reports.map(r => `<div class="thread rep ${RCLS[r.result] || ""}">
+      <div class="head">
+        <span class="repbadge">${D(p).res[r.result]}</span>
+        <b>${esc(nameOf(r.reporter_id))}</b>
+        <span class="when tnum">${fmt(r.reported_at)}</span></div>
       ${r.comment ? `<p>${esc(r.comment)}</p>` : ""}
-      ${r.reason ? `<p style="color:var(--danger)">사유: ${esc(r.reason)}</p>` : ""}
+      ${r.reason ? `<div class="why">사유 · ${esc(r.reason)}</div>` : ""}
       ${attListHtml(ATTS.filter(a => a.report_id === r.id))}
     </div>`).join("")
-    : `<p class="note">아직 보고가 없습니다.</p>`;
+    : `<div class="repnone">${isPerformer(p)
+        ? "아직 회신하지 않았습니다. 아래에서 결과를 등록해주세요."
+        : `${D(p).toName}의 회신을 기다리는 중입니다.`}</div>`;
 
   if(isPerformer(p) && p.status !== "confirmed"){
     const ex = currentReport;
@@ -3242,6 +3284,7 @@ function openWrite(p){
   // 결재는 케이터링이 새 요청을 올릴 때만 고른다 (수정 중에는 흐름을 건드리지 않는다)
   $("wApvWrap").classList.toggle("hidden", !!p || !isCatering());
   $("wApprove").checked = false;
+  syncOpt();
   $("wErr").textContent = "";
   $("aNew").value = "";
   attQClear("aNew");
@@ -3261,6 +3304,16 @@ function openWrite(p){
   $("write").classList.remove("hidden");
   window.scrollTo(0,0);
 }
+
+/* 옵션 토글 강조 · 등록 버튼 문구 */
+function syncOpt(){
+  $("wPhotoOpt").classList.toggle("on", $("wPhoto").checked);
+  $("wApvWrap").classList.toggle("on", $("wApprove").checked);
+  const 결재 = $("wApprove").checked && !$("wApvWrap").classList.contains("hidden");
+  if(editingId === null) $("wSave").textContent = 결재 ? "결재 요청하고 등록" : "등록";
+}
+$("wPhoto").onchange = syncOpt;
+$("wApprove").onchange = syncOpt;
 
 $("fabNew").onclick = () => openWrite(null);
 $("dEdit").onclick  = () => {
@@ -3287,7 +3340,9 @@ $("wSave").onclick = async () => {
     due_at: $("wDue").value ? new Date($("wDue").value).toISOString() : null,
     photo_required: $("wPhoto").checked
   };
-  const 원래라벨 = 수정 ? "수정 저장" : "등록";
+  const 원래라벨 = 수정 ? "수정 저장"
+    : ($("wApprove").checked && !$("wApvWrap").classList.contains("hidden")
+        ? "결재 요청하고 등록" : "등록");
   $("wSave").disabled = true; $("wSave").textContent = 수정 ? "저장 중…" : "등록 중…";
 
   const {data, error} = 수정
