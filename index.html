@@ -103,6 +103,12 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
 .chip-carry{background:#e0e7ff; color:#3730a3}
 .chip-file{background:#eef1f6; color:#4a5567}
 .chip-dir{background:#e8f0fe; color:#1e3a5f}
+.chip-apv{background:#fdf1d6; color:#8a6100}
+.chip-apvno{background:var(--danger-soft); color:var(--danger)}
+.apvbox{border-left:4px solid var(--line)}
+.apvbox.pend{border-left-color:#e0a92a; background:#fffdf6}
+.apvbox.ret{border-left-color:var(--danger); background:#fffaf9}
+.apvbox.ok{border-left-color:#2f9e58}
 
 /* ---------- 방향 세그먼트 ---------- */
 .segbar{display:flex; gap:6px; margin:0 0 10px}
@@ -212,6 +218,8 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
 .rpill.on{background:#e6ecfa; color:#2f5a8f}
 .rpill.late{background:var(--danger-soft); color:var(--danger)}
 .rpill.clear{background:#e4f2ea; color:#2f7d4f}
+.room-sub{font-size:11.5px; color:#9aa2b1}
+.room.warn{background:#fffaf9}
 .room-own{display:flex; flex-wrap:wrap; gap:3px 10px; font-size:11.5px; color:var(--muted);
   border-top:1px solid var(--line); padding-top:8px}
 .room-own em{font-style:normal; color:var(--ink); font-weight:600}
@@ -245,6 +253,37 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
 .swatches{display:flex; flex-wrap:wrap; gap:6px}
 .sw{width:30px; height:30px; border-radius:8px; border:2px solid transparent; padding:0; cursor:pointer}
 .sw.on{border-color:var(--ink); box-shadow:0 0 0 2px #fff inset}
+.ownpick{display:flex; flex-wrap:wrap; gap:6px}
+.ownbox{display:inline-flex; align-items:center; gap:6px; padding:6px 11px;
+  border:1px solid var(--line); border-radius:99px; background:var(--paper);
+  font-size:13px; cursor:pointer; user-select:none}
+.ownbox input{width:15px; height:15px; margin:0; accent-color:var(--brand); cursor:pointer}
+.ownbox.on{border-color:var(--brand); background:var(--brand-soft); font-weight:600}
+.ownnone{font-size:12.5px; color:var(--muted); padding:6px 0}
+
+/* 대시보드 */
+.dcards{display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:8px; margin-bottom:14px}
+.dcard{padding:11px 12px; background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); text-align:left; cursor:default}
+.dcard.click{cursor:pointer}
+.dcard.click:hover{border-color:#b9c1cd}
+.dcard .dl{font-size:11.5px; color:var(--muted); white-space:nowrap}
+.dcard .dv{font-size:22px; font-weight:700; line-height:1.2; margin-top:2px}
+.dcard.hot{border-color:#f0b9b4; background:#fef6f5}
+.dcard.hot .dv{color:var(--danger)}
+.dcard.mine .dv{color:var(--brand)}
+.dcard.zero .dv{color:#b9c1cd}
+
+/* 최근 움직임 */
+.recent{margin-top:18px}
+.rec{display:flex; gap:10px; align-items:baseline; width:100%; text-align:left;
+  padding:9px 11px; background:var(--paper); border:1px solid var(--line);
+  border-radius:9px; margin-bottom:6px; cursor:pointer; font-size:13px}
+.rec:hover{border-color:#b9c1cd}
+.rec .rk{flex:0 0 auto; font-size:11px; font-weight:700; padding:2px 7px; border-radius:5px;
+  background:#eef1f6; color:#4a5567}
+.rec .rt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink)}
+.rec .rw{flex:0 0 auto; font-size:11.5px; color:var(--muted); white-space:nowrap}
 
 /* ---------- 상세 ---------- */
 /* 상단 헤더는 항상 보이도록, 겹치지 않게 그 아래에서 시작한다 */
@@ -401,11 +440,15 @@ const IDLE_LIMIT_MIN = 30;
     <div id="banner"></div>
 
     <div id="roomHome">
-      <div class="rdigest" id="rDigest"></div>
+      <div class="dcards" id="rDigest"></div>
       <div class="rhead-line"><h3>업무 방</h3><span class="rule"></span></div>
       <div class="rooms" id="roomGrid"></div>
       <div class="rhact">
         <button type="button" class="btn btn-sm" id="goAllList">방 구분 없이 전체 목록 →</button>
+      </div>
+      <div class="recent" id="recentWrap">
+        <div class="rhead-line"><h3>최근 움직임</h3><span class="rule"></span></div>
+        <div id="recentList"></div>
       </div>
     </div>
 
@@ -429,6 +472,7 @@ const IDLE_LIMIT_MIN = 30;
       <select id="fStatus">
         <option value="all">전체</option>
         <option value="active">미완료 전체</option>
+        <option value="apv">결재 대기</option>
         <option value="open">대기</option>
         <option value="read">진행 중</option>
         <option value="reported">확인 요망</option>
@@ -502,7 +546,8 @@ const IDLE_LIMIT_MIN = 30;
     <p class="note" style="margin:10px 0 0">
       보관한 방은 새 업무 요청에서 고를 수 없지만, 그 방의 기존 글은 그대로 남습니다.
       쓰던 방은 지우지 말고 보관해주세요.<br>
-      전담을 지정하면 그 방의 요청 메일이 그 사람에게만 갑니다. 비워두면 상대편 전원에게 갑니다.</p>
+      담당자를 지정하면 그 방의 요청 메일이 그 사람들에게만 갑니다. 비워두면 상대편 전원에게 갑니다.<br>
+      보관한 방은 삭제할 수 있습니다. 방만 지워지고 글은 '방 없음' 으로 남아 전체 목록에서 볼 수 있습니다.</p>
   </div>
 
   <div class="box">
@@ -563,6 +608,14 @@ icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
     <div class="field" style="display:flex;align-items:center;gap:8px">
       <input type="checkbox" id="wPhoto" style="width:auto">
       <label for="wPhoto" style="margin:0">사진 회신 필요</label>
+    </div>
+    <div class="field hidden" id="wApvWrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="wApprove" style="width:auto">
+        <label for="wApprove" style="margin:0">파트장 결재 필요</label>
+      </div>
+      <p class="note" style="margin:6px 0 0">
+        체크하면 파트장 승인 전까지 도급사(KTS)에게 보이지 않고 메일도 나가지 않습니다.</p>
     </div>
     <div class="field">
       <label for="aNew">첨부파일</label>
@@ -627,7 +680,13 @@ const ROOM_COLORS = ["#2f5a8f","#3f6e6a","#8a5a3b","#7a4a6b",
 const roomOf     = id => CATS.find(c => c.id === id) || null;
 const roomColor  = c => (c && c.color) ? c.color : "#8c94a3";
 const roomName   = c => c ? c.name : "방 없음";
-const ownerName  = id => id && PROFILES[id] ? PROFILES[id].name : "미지정";
+/* 담당자는 여러 명이다 (uuid 배열). 사라진 계정은 표시에서 걸러낸다. */
+const ownerIds   = v => Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+const ownerCount = v => ownerIds(v).length;
+const ownerNames = v => {
+  const ns = ownerIds(v).map(id => PROFILES[id] ? PROFILES[id].name : null).filter(Boolean);
+  return ns.length ? ns.join(", ") : "미지정";
+};
 const liveRooms  = () => CATS.filter(c => c.active !== false);
 
 let sb = null, me = null;
@@ -897,46 +956,119 @@ function latestReport(pid){
   return rs.length ? rs[rs.length-1] : null;
 }
 
-/* ---------- 방 목록 화면 ---------- */
+/* ---------- 방 목록 화면 (대시보드) ---------- */
+const 오늘YMD = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+};
+
 function roomStat(id){
   const ps = POSTS.filter(p => !p.deleted_at && p.category_id === id);
+  let last = null;
+  const touch = t => { if(t && (!last || new Date(t) > new Date(last))) last = t; };
+  ps.forEach(p => touch(p.created_at));
+  const ids = new Set(ps.map(p => p.id));
+  REPORTS .forEach(r => { if(ids.has(r.post_id)) touch(r.reported_at); });
+  COMMENTS.forEach(c => { if(ids.has(c.post_id)) touch(c.created_at); });
   return {
-    open: ps.filter(p => ACTIVE.includes(p.status)).length,
-    late: ps.filter(p => isOverdue(p)).length,
-    mth:  ps.filter(p => ymOf(p.created_at) === ymNow()).length
+    inN:  ps.filter(p => ACTIVE.includes(p.status) && dirOf(p) === inDir()).length,
+    outN: ps.filter(p => ACTIVE.includes(p.status) && dirOf(p) === outDir()).length,
+    late: ps.filter(isOverdue).length,
+    mth:  ps.filter(p => ymOf(p.created_at) === ymNow()).length,
+    last
   };
+}
+
+/* 상단 요약 카드 */
+function drawDigest(보임){
+  const 받은미처리 = 보임.filter(p => ACTIVE.includes(p.status) && dirOf(p) === inDir()).length;
+  const 보낸미처리 = 보임.filter(p => ACTIVE.includes(p.status) && dirOf(p) === outDir()).length;
+  const 확인요망   = 보임.filter(p => p.status === "reported" && isRequester(p)).length;
+  const 초과      = 보임.filter(isOverdue).length;
+  const 임박      = 보임.filter(p => isDueSoon(p) && !isOverdue(p)).length;
+  const 오늘      = 보임.filter(p => String(p.created_at).slice(0,10) === 오늘YMD()).length;
+  const 방없음     = 보임.filter(p => !p.category_id).length;
+  const 결재대기    = 보임.filter(p => p.approval === "pending").length;
+
+  const card = (라벨, 값, cls, 클릭) =>
+    `<${클릭 ? "button type=\"button\"" : "div"} class="dcard ${cls}${클릭 ? " click" : ""}"
+       ${클릭 ? `data-go="${클릭}"` : ""}>
+      <div class="dl">${라벨}</div><div class="dv tnum">${값}</div>
+    </${클릭 ? "button" : "div"}>`;
+
+  $("rDigest").innerHTML =
+      card("내가 처리할 건", 받은미처리, 받은미처리 ? "mine" : "zero", "in")
+    + card("회신 확인 필요", 확인요망,   확인요망 ? "mine" : "zero", "chk")
+    + card("내가 보낸 미완료", 보낸미처리, 보낸미처리 ? "" : "zero", "out")
+    + card("기한 초과",      초과,      초과 ? "hot" : "zero", 초과 ? "late" : null)
+    + card("마감 임박 24h",  임박,      임박 ? "" : "zero", null)
+    + card("오늘 등록",      오늘,      오늘 ? "" : "zero", null)
+    + (결재대기 ? card(me.can_approve ? "내가 결재할 건" : "결재 대기",
+                      결재대기, me.can_approve ? "hot" : "mine", "apv") : "")
+    + (방없음 ? card("방 없음", 방없음, "", "none") : "");
+
+  $("rDigest").querySelectorAll("[data-go]").forEach(el => el.onclick = () => {
+    const g = el.dataset.go;
+    curRoomId = "all";
+    $("fCat").value = g === "none" ? "none" : "";
+    $("fStatus").value = g === "chk" ? "reported" : g === "apv" ? "apv" : "active";
+    if(g === "in")  setSeg("in",  false);
+    if(g === "out") setSeg("out", false);
+    if(g === "chk" || g === "late" || g === "none" || g === "apv") setSeg("all", false);
+    render(); window.scrollTo(0,0);
+  });
+}
+
+/* 최근 움직임 — 등록·회신·특이사항을 합쳐 최신 6건 */
+function drawRecent(보임){
+  const map = {}; 보임.forEach(p => map[p.id] = p);
+  const ev = [];
+  보임.forEach(p => ev.push({t:p.created_at, k:"등록", p, w:nameOf(p.author_id)}));
+  REPORTS.forEach(r => { if(map[r.post_id])
+    ev.push({t:r.reported_at, k:"회신", p:map[r.post_id], w:nameOf(r.reporter_id)}); });
+  COMMENTS.forEach(c => { if(map[c.post_id])
+    ev.push({t:c.created_at, k:"특이사항", p:map[c.post_id], w:nameOf(c.author_id)}); });
+
+  ev.sort((a,b) => new Date(b.t) - new Date(a.t));
+  const rows = ev.slice(0, 6);
+  $("recentWrap").classList.toggle("hidden", !rows.length);
+  $("recentList").innerHTML = rows.map(e => {
+    const c = roomOf(e.p.category_id);
+    return `<button type="button" class="rec" data-rpost="${e.p.id}">
+      <span class="rk" ${c ? `style="background:${roomColor(c)};color:#fff"` : ""}>${esc(c ? c.name : "방 없음")}</span>
+      <span class="rt">${esc(e.p.title)}</span>
+      <span class="rw tnum">${esc(e.k)} · ${esc(e.w)} · ${fmt(e.t)}</span>
+    </button>`;
+  }).join("");
+  $("recentList").querySelectorAll("[data-rpost]").forEach(el =>
+    el.onclick = () => openDetail(Number(el.dataset.rpost)));
 }
 
 function drawRoomHome(){
   const live = liveRooms();
   const 보임 = POSTS.filter(p => !p.deleted_at);
-  const 미처리 = 보임.filter(p => ACTIVE.includes(p.status)).length;
-  const 초과   = 보임.filter(p => isOverdue(p)).length;
-  const 방밖   = 보임.filter(p => !live.some(c => c.id === p.category_id)).length;
 
-  $("rDigest").innerHTML =
-      `<div class="d"><b class="tnum">${live.length}</b> 방</div>`
-    + `<div class="d"><b class="tnum">${미처리}</b> 미처리</div>`
-    + `<div class="d ${초과 ? "alert" : ""}"><b class="tnum">${초과}</b> 기한 초과</div>`
-    + (방밖 ? `<div class="d"><b class="tnum">${방밖}</b> 보관된 방</div>` : "");
+  drawDigest(보임);
 
   $("roomGrid").innerHTML = live.length ? live.map(c => {
     const st = roomStat(c.id);
-    return `<button type="button" class="room" data-rid="${c.id}" style="--rc:${roomColor(c)}">
+    return `<button type="button" class="room${st.late ? " warn" : ""}" data-rid="${c.id}"
+        style="--rc:${st.late ? "var(--danger)" : roomColor(c)}">
       <span class="room-top">
-        <span class="room-mark">${esc(c.name.slice(0,1))}</span>
+        <span class="room-mark" style="background:${roomColor(c)}">${esc(c.name.slice(0,1))}</span>
         <span class="room-name"><b>${esc(c.name)}</b>
           <span>${esc(c.description || "")}</span></span>
       </span>
       <span class="room-nums">
-        ${st.open ? `<span class="rpill on">미처리 <b class="tnum">${st.open}</b></span>`
-                  : `<span class="rpill clear">미처리 없음</span>`}
+        ${st.inN  ? `<span class="rpill on">내 처리 <b class="tnum">${st.inN}</b></span>` : ""}
+        ${st.outN ? `<span class="rpill">보낸 미완료 <b class="tnum">${st.outN}</b></span>` : ""}
         ${st.late ? `<span class="rpill late">기한 초과 <b class="tnum">${st.late}</b></span>` : ""}
-        <span class="rpill">이번 달 <b class="tnum">${st.mth}</b></span>
+        ${(!st.inN && !st.outN && !st.late) ? `<span class="rpill clear">미처리 없음</span>` : ""}
       </span>
+      <span class="room-sub">이번 달 ${st.mth}건${st.last ? ` · 최근 ${fmt(st.last, false)}` : ""}</span>
       <span class="room-own">
-        <span>케이터링 <em class="${c.owner_catering ? "" : "none"}">${esc(ownerName(c.owner_catering))}</em></span>
-        <span>KTS <em class="${c.owner_vendor ? "" : "none"}">${esc(ownerName(c.owner_vendor))}</em></span>
+        <span>케이터링 <em class="${ownerCount(c.owner_catering) ? "" : "none"}">${esc(ownerNames(c.owner_catering))}</em></span>
+        <span>KTS <em class="${ownerCount(c.owner_vendor) ? "" : "none"}">${esc(ownerNames(c.owner_vendor))}</em></span>
       </span>
     </button>`;
   }).join("") : `<div class="empty">사용 중인 방이 없습니다.<br>
@@ -946,8 +1078,11 @@ function drawRoomHome(){
   $("roomGrid").querySelectorAll("[data-rid]").forEach(el => el.onclick = () => {
     curRoomId = Number(el.dataset.rid);
     $("fQ").value = ""; SEARCH_ON = false; SEARCH_POSTS = [];
+    $("fCat").value = "";
     render(); window.scrollTo(0,0);
   });
+
+  drawRecent(보임);
 }
 
 function drawRoomHead(){
@@ -955,7 +1090,7 @@ function drawRoomHead(){
     $("roomHead").innerHTML = `<div class="roomhead" style="--rc:#8c94a3">
         <button type="button" class="btn btn-sm" id="rBack">← 방 목록</button>
         <span class="rh-main"><b>전체 목록</b>
-          <span>방 구분 없이 모든 업무 요청을 봅니다.</span></span>
+          <span>방 구분 없이 모든 업무 요청을 봅니다. 방이 삭제된 글은 '방 없음' 으로 찾습니다.</span></span>
       </div>`;
   } else {
     const c = roomOf(curRoomId);
@@ -966,8 +1101,8 @@ function drawRoomHead(){
             ? ` <span class="tag tag-off">보관됨</span>` : ""}</b>
           <span>${esc(c.description || "")}</span></span>
         <span class="owners">
-          <span class="ownchip ${c.owner_catering ? "" : "none"}">케이터링 전담 <b>${esc(ownerName(c.owner_catering))}</b></span>
-          <span class="ownchip ${c.owner_vendor ? "" : "none"}">KTS 전담 <b>${esc(ownerName(c.owner_vendor))}</b></span>
+          <span class="ownchip ${ownerCount(c.owner_catering) ? "" : "none"}">케이터링 담당 <b>${esc(ownerNames(c.owner_catering))}</b></span>
+          <span class="ownchip ${ownerCount(c.owner_vendor) ? "" : "none"}">KTS 담당 <b>${esc(ownerNames(c.owner_vendor))}</b></span>
         </span>
       </div>`;
   }
@@ -1020,9 +1155,11 @@ function render(){
     }
     if(curRoomId !== "all" && p.category_id !== curRoomId) return false;
     if(segDir && dirOf(p) !== segDir) return false;
-    if(fs === "active" && !ACTIVE.includes(p.status)) return false;
-    if(fs !== "active" && fs !== "all" && p.status !== fs) return false;
-    if(fc && String(p.category_id) !== fc) return false;
+    if(fs === "apv"){ if(p.approval !== "pending") return false; }
+    else if(fs === "active"){ if(!ACTIVE.includes(p.status)) return false; }
+    else if(fs !== "all" && p.status !== fs) return false;
+    if(fc === "none"){ if(p.category_id) return false; }
+    else if(fc && String(p.category_id) !== fc) return false;
     if(q && !((p.title||"") + (p.body||"")).toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b) => {
@@ -1074,6 +1211,8 @@ function render(){
       style="--bar:${late ? '#c2352b' : soon ? '#e08a1e' : st.bar}">
       <div class="card-main">
         <div class="card-top">
+          ${p.approval === "pending"  ? `<span class="chip chip-apv">결재 대기</span>` : ""}
+          ${p.approval === "returned" ? `<span class="chip chip-apvno">결재 반려</span>` : ""}
           ${curSeg === "all" ? `<span class="chip chip-dir">${D(p).chip}</span>` : ""}
           ${isCarry(p) ? `<span class="chip chip-carry">이월</span>` : ""}
           ${cat && curRoomId === "all"
@@ -1122,7 +1261,7 @@ $("segBar").querySelectorAll("[data-seg]").forEach(el =>
 /* 목록 상단 방 필터 — 보관된 방도 고를 수 있게 둔다 (과거 글 조회용) */
 function drawRoomFilter(){
   const live = liveRooms(), off = CATS.filter(c => c.active === false);
-  $("fCat").innerHTML = `<option value="">방 전체</option>`
+  $("fCat").innerHTML = `<option value="">방 전체</option><option value="none">방 없음</option>`
     + live.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")
     + (off.length ? `<optgroup label="보관된 방">`
         + off.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")
@@ -1392,6 +1531,7 @@ async function loadStat(){
   const {data, error} = await sb.from("posts").select("*")
     .gte("created_at", from).lt("created_at", to)
     .eq("direction", "c2v")               // 도급사 통보서 기준 — 케이터링 → KTS 만
+    .in("approval", ["none","approved"])  // 결재 대기·반려 건은 아직 전달 전이므로 제외
     .is("deleted_at", null)               // 숨긴 항목은 통계에서 제외
     .order("created_at");
   if(error){
@@ -1904,9 +2044,15 @@ function catEditorHtml(){
   const 사람 = org => Object.values(PROFILES)
     .filter(u => u.org === org && u.active !== false)
     .sort((a,b) => String(a.name).localeCompare(String(b.name), "ko"));
-  const opt = (org, sel) => `<option value="">— 미지정 —</option>`
-    + 사람(org).map(u =>
-        `<option value="${u.id}"${u.id === sel ? " selected" : ""}>${esc(u.name)}</option>`).join("");
+  const pick = (org, sel) => {
+    const list = 사람(org), 고른 = ownerIds(sel);
+    if(!list.length) return `<span class="ownnone">등록된 계정이 없습니다.</span>`;
+    return list.map(u => {
+      const on = 고른.includes(u.id);
+      return `<label class="ownbox${on ? " on" : ""}">
+        <input type="checkbox" value="${u.id}"${on ? " checked" : ""}>${esc(u.name)}</label>`;
+    }).join("");
+  };
 
   return `<div class="cat-editor">
     <div class="row2">
@@ -1920,18 +2066,17 @@ function catEditorHtml(){
       <div class="swatches" id="cSws">${ROOM_COLORS.map(x =>
         `<button type="button" class="sw${x === roomColor(d) ? " on" : ""}"
            data-c="${x}" style="background:${x}" aria-label="색 ${x}"></button>`).join("")}</div></div>
-    <div class="row2">
-      <div class="field"><label for="cOC">케이터링 전담</label>
-        <select id="cOC">${opt("catering", d.owner_catering)}</select></div>
-      <div class="field"><label for="cOV">KTS 전담</label>
-        <select id="cOV">${opt("vendor", d.owner_vendor)}</select></div>
-    </div>
+    <div class="field"><label>케이터링 담당 (여러 명 선택 가능)</label>
+      <div class="ownpick" id="cOC">${pick("catering", d.owner_catering)}</div></div>
+    <div class="field"><label>KTS 담당 (여러 명 선택 가능)</label>
+      <div class="ownpick" id="cOV">${pick("vendor", d.owner_vendor)}</div></div>
     <div class="actions">
       <button class="btn btn-primary btn-sm" id="cSaveRoom">${editingCat === "new" ? "방 만들기" : "저장"}</button>
       <button class="btn btn-sm" id="cCancelRoom">취소</button>
     </div>
     <p class="note" style="margin:9px 0 0">
-      전담을 비워두면 그 방의 요청 메일은 상대편 전원에게 갑니다. 나중에 지정하셔도 됩니다.</p>
+      담당을 비워두면 그 방의 요청 메일은 상대편 전원에게 갑니다. 나중에 지정하셔도 됩니다.
+      여러 명을 함께 담당으로 두면 그 전원에게 메일이 갑니다.</p>
   </div>`;
 }
 
@@ -1946,14 +2091,15 @@ function drawCats(){
       <div class="cat-info">
         <div class="nm">${esc(c.name)}${보관 ? ` <span class="tag tag-off">보관됨</span>` : ""}</div>
         <div class="sub">${esc(c.description || "설명 없음")}</div>
-        <div class="sub2">전담 · 케이터링 ${esc(ownerName(c.owner_catering))}
-          / KTS ${esc(ownerName(c.owner_vendor))} · 글 ${건수(c.id)}건</div>
+        <div class="sub2">담당 · 케이터링 ${esc(ownerNames(c.owner_catering))}
+          / KTS ${esc(ownerNames(c.owner_vendor))} · 글 ${건수(c.id)}건</div>
       </div>
       <div class="actions">
         ${보관 ? "" : `<button class="btn btn-sm" data-cup="${c.id}" ${i === 0 ? "disabled" : ""}>▲</button>
         <button class="btn btn-sm" data-cdn="${c.id}" ${i === total - 1 ? "disabled" : ""}>▼</button>`}
         <button class="btn btn-sm" data-cedit="${c.id}">수정</button>
         <button class="btn btn-sm" data-coff="${c.id}">${보관 ? "다시 사용" : "보관"}</button>
+        ${보관 ? `<button class="btn btn-sm btn-danger" data-cdel="${c.id}">삭제</button>` : ""}
       </div>
     </div>`;
 
@@ -1968,16 +2114,29 @@ function drawCats(){
 
   $("catBody").querySelectorAll("[data-cedit]").forEach(el => el.onclick = () => {
     const c = CATS.find(x => x.id === Number(el.dataset.cedit));
-    editingCat = c.id; catDraft = Object.assign({}, c);
+    editingCat = c.id;
+    catDraft = Object.assign({}, c, {
+      owner_catering: ownerIds(c.owner_catering),
+      owner_vendor:   ownerIds(c.owner_vendor)});
     drawCats();
     if($("cName")) $("cName").focus();
   });
   $("catBody").querySelectorAll("[data-coff]").forEach(el =>
     el.onclick = () => toggleCat(Number(el.dataset.coff)));
+  $("catBody").querySelectorAll("[data-cdel]").forEach(el =>
+    el.onclick = () => deleteRoom(Number(el.dataset.cdel)));
   $("catBody").querySelectorAll("[data-cup]").forEach(el =>
     el.onclick = () => moveCat(Number(el.dataset.cup), -1));
   $("catBody").querySelectorAll("[data-cdn]").forEach(el =>
     el.onclick = () => moveCat(Number(el.dataset.cdn), 1));
+
+  ["cOC","cOV"].forEach(id => {
+    const box = $(id);
+    if(!box) return;
+    box.querySelectorAll("input[type=checkbox]").forEach(cb => cb.onchange = () => {
+      cb.closest(".ownbox").classList.toggle("on", cb.checked);
+    });
+  });
 
   const sws = $("cSws");
   if(sws) sws.querySelectorAll(".sw").forEach(el => el.onclick = () => {
@@ -1995,8 +2154,14 @@ function syncCatDraft(){
   if(!catDraft || !$("cName")) return;
   catDraft.name           = $("cName").value.trim();
   catDraft.description    = $("cDesc").value.trim() || null;
-  catDraft.owner_catering = $("cOC").value || null;
-  catDraft.owner_vendor   = $("cOV").value || null;
+  const 고른 = id => {
+    const box = $(id);
+    if(!box) return [];
+    return Array.from(box.querySelectorAll("input[type=checkbox]"))
+      .filter(cb => cb.checked).map(cb => cb.value);
+  };
+  catDraft.owner_catering = 고른("cOC");
+  catDraft.owner_vendor   = 고른("cOV");
 }
 
 async function saveRoom(){
@@ -2006,9 +2171,10 @@ async function saveRoom(){
   if(CATS.some(c => c.id !== editingCat && c.name === d.name)){
     alert("같은 이름의 방이 이미 있습니다."); return;
   }
+  const 배열 = v => (Array.isArray(v) && v.length) ? v : null;
   const payload = {
     name: d.name, description: d.description, color: roomColor(d),
-    owner_catering: d.owner_catering, owner_vendor: d.owner_vendor
+    owner_catering: 배열(d.owner_catering), owner_vendor: 배열(d.owner_vendor)
   };
   const btn = $("cSaveRoom");
   btn.disabled = true; btn.textContent = "저장 중…";
@@ -2024,6 +2190,41 @@ async function saveRoom(){
   }
   editingCat = null; catDraft = null;
   await loadCatsAll();
+}
+
+/* 보관된 방 삭제 — 방만 지우고 글은 '방 없음' 으로 남긴다 */
+async function deleteRoom(id){
+  const c = CATS.find(x => x.id === id);
+  if(!c) return;
+  if(c.active !== false){
+    alert("사용 중인 방은 바로 지울 수 없습니다.\n\n먼저 [보관] 한 뒤 삭제해주세요.");
+    return;
+  }
+  const {count, error: cErr} = await sb.from("posts")
+    .select("id", {count:"exact", head:true}).eq("category_id", id);
+  if(cErr){ alert("글 건수를 확인하지 못했습니다: " + cErr.message); return; }
+  const 건수 = count || 0;
+
+  if(!confirm(건수
+    ? `"${c.name}" 방을 삭제할까요?\n\n`
+      + `⚠ 이 방에 업무 요청 ${건수}건이 있습니다.\n\n`
+      + `글은 지워지지 않습니다. '방 없음' 상태가 되어\n`
+      + `[전체 목록] → 방 필터 [방 없음] 에서 계속 볼 수 있습니다.\n\n`
+      + `방 삭제는 되돌릴 수 없습니다.`
+    : `"${c.name}" 방을 삭제할까요?\n\n이 방에는 글이 없습니다.\n삭제는 되돌릴 수 없습니다.`)) return;
+
+  if(건수 && !confirm(`마지막 확인입니다.\n\n"${c.name}" 방을 지우면\n`
+    + `${건수}건이 '방 없음' 상태가 됩니다.\n\n정말 삭제할까요?`)) return;
+
+  const {error} = await sb.from("categories").delete().eq("id", id);
+  if(error){
+    alert("삭제하지 못했습니다: " + error.message
+      + "\n\n글이 붙은 방이 안 지워지면 `방_보강.sql` 이 실행됐는지 확인해주세요.");
+    return;
+  }
+  if(curRoomId === id) curRoomId = null;
+  await loadCatsAll();
+  await loadList();
 }
 
 async function toggleCat(id){
@@ -2057,7 +2258,7 @@ $("catAdd").onclick = () => {
   editingCat = "new";
   catDraft = {id:null, name:"", description:"", active:true,
               color: ROOM_COLORS[liveRooms().length % ROOM_COLORS.length],
-              owner_catering:null, owner_vendor:null};
+              owner_catering:[], owner_vendor:[]};
   drawCats();
   if($("cName")) $("cName").focus();
 };
@@ -2426,7 +2627,8 @@ const LOG_COLOR = {
   reported:"#7c4ddb", commented:"#69707d",
   confirmed:"#2f9e58", rejected:"#c2352b", unconfirmed:"#b45309", edited:"#b45309",
   report_edited:"#7c4ddb", hidden:"#69707d", restored:"#69707d",
-  mail_failed:"#c2352b"
+  mail_failed:"#c2352b",
+  approval_requested:"#b45309", approved:"#2f9e58", returned:"#c2352b", resubmitted:"#b45309"
 };
 
 function buildLog(comments, reports){
@@ -2473,12 +2675,17 @@ function buildLog(comments, reports){
     edited:      "내용을 수정했습니다.",
     mailed:      "메일로 발송했습니다.",
     mail_failed: "메일 발송을 시도했으나 실패했습니다.",
+    approval_requested: "파트장 결재를 요청했습니다.",
+    approved:    "결재를 승인했습니다.",
+    returned:    "결재를 반려했습니다.",
+    resubmitted: "수정 후 재상신했습니다.",
     hidden:      "목록에서 숨겼습니다.",
     restored:    "숨김을 해제했습니다."
   };
   POST_EVENTS.filter(e => DECIDE[e.kind]).forEach(e => push(e.created_at, e.kind,
     `<b>${esc(nameOf(e.actor_id))}</b> 님이 ${DECIDE[e.kind]}`,
     e.kind === "rejected" && e.detail ? `사유: ${e.detail}`
+      : e.kind === "returned" && e.detail ? `사유: ${e.detail}`
       : e.kind === "edited" && e.detail ? `변경 항목: ${e.detail}`
       : e.kind === "mailed" && e.detail ? `받는 사람: ${e.detail}` : null));
 
@@ -2585,6 +2792,8 @@ function drawDetail(comments, reports){
   let h = `<div class="box">
     <div class="card-top">
       <span class="st ${st.cls}">${st.label}</span>
+      ${p.approval === "pending"  ? `<span class="chip chip-apv">결재 대기</span>` : ""}
+      ${p.approval === "returned" ? `<span class="chip chip-apvno">결재 반려</span>` : ""}
       <span class="chip chip-dir">${D(p).chip}</span>
       ${cat ? `<span class="chip" style="background:${roomColor(cat)};color:#fff">${esc(cat.name)} 방</span>`
             : `<span class="chip chip-cat">방 없음</span>`}
@@ -2601,6 +2810,8 @@ function drawDetail(comments, reports){
       ${p.flight_no ? `<dt>편명</dt><dd>${esc(p.flight_no)}</dd>` : ""}
       ${p.flight_date ? `<dt>해당 일자</dt><dd>${fmt(p.flight_date,false)}</dd>` : ""}
       ${p.photo_required ? `<dt>회신</dt><dd>사진 필요</dd>` : ""}
+      ${cat ? `<dt>${D(p).toName} 담당</dt><dd>${esc(ownerNames(
+          dirOf(p) === "c2v" ? cat.owner_vendor : cat.owner_catering))}</dd>` : ""}
       ${p.reject_reason ? `<dt>반려 사유</dt><dd>${esc(p.reject_reason)}</dd>` : ""}
     </dl>
     <div class="detail-body">${esc(p.body)}</div>
@@ -2608,6 +2819,9 @@ function drawDetail(comments, reports){
     ${isRequester(p) ? `<div style="margin-top:12px">${attPickerHtml("aPost","요청 첨부 추가")}
       <button class="btn btn-sm" id="aPostUp" style="margin-top:6px">첨부 올리기</button></div>` : ""}
   </div>`;
+
+  /* 파트장 결재 */
+  h += apvHtml(p);
 
   /* 이행보고 */
   const 보고수정가능 = isPerformer(p) && p.status !== "confirmed" && !!currentReport;
@@ -2651,27 +2865,45 @@ function drawDetail(comments, reports){
   h += `</div>`;
 
   /* 케이터링 확인 */
+  const 원청요청 = dirOf(p) === "c2v";          // 케이터링 → KTS
+  const 결재잠금 = p.approval === "pending" || p.approval === "returned";
+
   if(isRequester(p) && p.status !== "confirmed"){
     const 보낸적 = POST_EVENTS.filter(e => e.kind === "mailed").pop();
-    h += `<div class="box"><h4>확인 처리</h4>
+    h += `<div class="box"><h4>${원청요청 ? "확인 처리" : "회신 확인"}</h4>
       <div class="actions">
-        <button class="btn btn-primary" id="cOk">확인완료</button>
-        <button class="btn btn-danger" id="cNo">반려</button>
-        <button class="btn" id="cMail">✉ 메일 발송</button>
-        <button class="btn btn-sm" id="cMailTest">시험 발송</button>
+        <button class="btn btn-primary" id="cOk">${원청요청 ? "확인완료" : "확인"}</button>
+        ${원청요청 ? `<button class="btn btn-danger" id="cNo">반려</button>` : ""}
+        <button class="btn" id="cMail" ${결재잠금 ? "disabled" : ""}>✉ 메일 발송</button>
+        <button class="btn btn-sm" id="cMailTest" ${결재잠금 ? "disabled" : ""}>시험 발송</button>
       </div>
-      <p class="note" style="margin:10px 0 0">확인완료 시 진행 중 목록에서 빠집니다.</p>
-      <p class="note" style="margin:4px 0 0">${보낸적
-        ? `메일을 이미 보냈습니다 — ${esc(nameOf(보낸적.actor_id))} · ${fmt(보낸적.created_at)}`
-        : `메일 발송은 ${D(p).toName} 전원에게 한 번에 보냅니다.`}<br>
+      <p class="note" style="margin:10px 0 0">${원청요청
+        ? "확인완료 시 진행 중 목록에서 빠집니다."
+        : "회신을 확인하면 완료 처리됩니다. 내용에 이견이 있으면 특이사항에 남겨주세요."}</p>
+      <p class="note" style="margin:4px 0 0">${결재잠금
+        ? "파트장 결재 전에는 메일을 보낼 수 없습니다."
+        : (보낸적
+          ? `메일을 이미 보냈습니다 — ${esc(nameOf(보낸적.actor_id))} · ${fmt(보낸적.created_at)}`
+          : `메일은 ${D(p).toName} 담당자에게 보냅니다. 담당이 없으면 전원에게 갑니다.`)}<br>
         시험 발송은 지정한 주소 한 곳으로만 가고 이력에 남지 않습니다.</p>
     </div>`;
   }
-  if(isRequester(p) && p.status === "confirmed"){
+
+  /* KTS 요청은 처리한 케이터링도 종결할 수 있다 (상대가 확인을 안 해도 막히지 않게) */
+  if(!원청요청 && isPerformer(p) && p.status !== "confirmed" && !!currentReport){
+    h += `<div class="box"><h4>처리 종결</h4>
+      <div class="actions"><button class="btn btn-primary" id="cClose">처리 종결</button></div>
+      <p class="note" style="margin:10px 0 0">
+        회신을 마쳤고 더 진행할 것이 없으면 종결합니다.
+        도급사(KTS)가 <b>확인</b>을 눌러도 종결되며, 누가 종결했는지는 로그 이력에 남습니다.</p>
+    </div>`;
+  }
+
+  if((isRequester(p) || (!원청요청 && isPerformer(p))) && p.status === "confirmed"){
     h += `<div class="box"><h4>확인 처리</h4>
       <div class="actions"><button class="btn" id="cUndo">완료 취소</button></div>
       <p class="note" style="margin:10px 0 0">잘못 처리한 경우 되돌립니다.
-        취소하면 확인 요망 상태로 돌아가고, ${D(p).toName}이(가) 보고를 다시 수정할 수 있습니다.
+        취소하면 확인 요망 상태로 돌아가고, ${D(p).toName}이(가) 회신을 다시 수정할 수 있습니다.
         취소 사실은 로그 이력에 남습니다.</p>
     </div>`;
   }
@@ -2707,8 +2939,12 @@ function drawDetail(comments, reports){
     $("rEdit").textContent = 열림 ? "수정" : "닫기";
     if(!열림) w.scrollIntoView({behavior:"smooth", block:"nearest"});
   };
-  if($("cOk"))   $("cOk").onclick   = () => decide("confirmed");
-  if($("cNo"))   $("cNo").onclick   = () => decide("rejected");
+  if($("cOk"))    $("cOk").onclick    = () => decide("confirmed");
+  if($("cNo"))    $("cNo").onclick    = () => decide("rejected");
+  if($("cClose")) $("cClose").onclick = () => decide("confirmed");
+  if($("apvOk"))  $("apvOk").onclick  = () => doApprove(true);
+  if($("apvNo"))  $("apvNo").onclick  = () => doApprove(false);
+  if($("apvRe"))  $("apvRe").onclick  = doResubmit;
   if($("cUndo")) $("cUndo").onclick = () => undoConfirm(reports.length > 0);
   if($("cMail")) $("cMail").onclick = () => sendMail(false);
   if($("cMailTest")) $("cMailTest").onclick = () => sendMail(true);
@@ -2717,7 +2953,70 @@ function drawDetail(comments, reports){
   bindAttEvents($("dBody"));
 }
 
-/* 지시글에 첨부만 추가 (케이터링) */
+/* ---------- 파트장 결재 ---------- */
+function apvHtml(p){
+  const a = p.approval || "none";
+  if(a === "none") return "";
+
+  if(a === "pending"){
+    return `<div class="box apvbox pend"><h4>파트장 결재</h4>
+      <p class="note" style="margin:0 0 10px">
+        결재 대기 중입니다. 승인 전까지 <b>도급사(KTS)에게 보이지 않고 메일도 나가지 않습니다.</b></p>
+      ${me.can_approve
+        ? `<div class="actions">
+             <button class="btn btn-primary" id="apvOk">승인</button>
+             <button class="btn btn-danger" id="apvNo">반려</button>
+           </div>`
+        : `<p class="note" style="margin:0">파트장 승인을 기다리는 중입니다.</p>`}
+    </div>`;
+  }
+
+  if(a === "returned"){
+    return `<div class="box apvbox ret"><h4>파트장 결재 — 반려</h4>
+      <p style="margin:0 0 8px;color:var(--danger)">사유: ${esc(p.approval_note || "-")}</p>
+      <p class="note" style="margin:0 0 10px">
+        내용을 고친 뒤 재상신하면 결재가 다시 올라갑니다. 그동안 도급사(KTS)에게는 보이지 않습니다.</p>
+      ${isCatering()
+        ? `<div class="actions"><button class="btn btn-primary" id="apvRe">재상신</button></div>` : ""}
+    </div>`;
+  }
+
+  return `<div class="box apvbox ok"><h4>파트장 결재 — 승인</h4>
+    <p class="note" style="margin:0">${esc(nameOf(p.approver_id))} · ${fmt(p.approved_at)}</p></div>`;
+}
+
+async function doApprove(ok){
+  let 사유 = null;
+  if(ok){
+    if(!confirm("이 업무 요청을 승인할까요?\n\n승인하면 도급사(KTS)에게 보이고 메일을 보낼 수 있습니다.")) return;
+  } else {
+    사유 = prompt("반려 사유를 입력하세요");
+    if(!사유 || !사유.trim()) return;
+    사유 = 사유.trim();
+  }
+  const btn = ok ? $("apvOk") : $("apvNo");
+  btn.disabled = true; btn.textContent = "처리 중…";
+  const {error} = await sb.rpc("approve_post",
+    {p_post_id: currentPost.id, p_ok: ok, p_note: 사유});
+  if(error){
+    btn.disabled = false; btn.textContent = ok ? "승인" : "반려";
+    alert("처리하지 못했습니다: " + error.message); return;
+  }
+  await refreshDetail();
+}
+
+async function doResubmit(){
+  if(!confirm("고친 내용으로 결재를 다시 올릴까요?")) return;
+  $("apvRe").disabled = true; $("apvRe").textContent = "올리는 중…";
+  const {error} = await sb.rpc("resubmit_post", {p_post_id: currentPost.id});
+  if(error){
+    $("apvRe").disabled = false; $("apvRe").textContent = "재상신";
+    alert("재상신하지 못했습니다: " + error.message); return;
+  }
+  await refreshDetail();
+}
+
+/* 요청글에 첨부만 추가 */
 async function uploadPostAtt(){
   const picked = attQ("aPost");
   if(!picked.length){ alert("파일을 선택하세요."); return; }
@@ -2940,6 +3239,9 @@ function openWrite(p){
   $("wFdate").value = p ? (p.flight_date || "") : "";
   $("wDue").value   = p ? toLocalInput(p.due_at) : "";
   $("wPhoto").checked = p ? !!p.photo_required : false;
+  // 결재는 케이터링이 새 요청을 올릴 때만 고른다 (수정 중에는 흐름을 건드리지 않는다)
+  $("wApvWrap").classList.toggle("hidden", !!p || !isCatering());
+  $("wApprove").checked = false;
   $("wErr").textContent = "";
   $("aNew").value = "";
   attQClear("aNew");
@@ -2991,7 +3293,9 @@ $("wSave").onclick = async () => {
   const {data, error} = 수정
     ? await sb.from("posts").update(payload).eq("id", editingId).select().single()
     : await sb.from("posts").insert({...payload, author_id: me.id,
-                                     direction: myNewDir()}).select().single();
+                                     direction: myNewDir(),
+                                     approval: (isCatering() && $("wApprove").checked)
+                                               ? "pending" : "none"}).select().single();
 
   if(error){
     $("wSave").disabled = false; $("wSave").textContent = 원래라벨;
@@ -3016,6 +3320,13 @@ $("wSave").onclick = async () => {
   curMonth = ymNow();               // 등록 직후 방금 올린 글이 보이도록 당월로 복귀
   if(data && data.category_id) curRoomId = data.category_id;   // 그 글이 속한 방으로
   await loadList();
+
+  // 결재 대기 건은 승인 전에는 발송할 수 없다
+  if(data && data.approval === "pending"){
+    alert("등록했습니다.\n\n파트장 결재를 요청했습니다.\n"
+        + "승인 전까지 도급사(KTS)에게 보이지 않고 메일도 나가지 않습니다.");
+    return;
+  }
 
   // 등록 직후 바로 메일을 보낼 수 있게 물어본다
   if(confirm(`등록했습니다.\n\n${DIR[myNewDir()].toName} 전원에게 메일로 알릴까요?\n\n`
