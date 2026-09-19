@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -72,12 +73,22 @@ header{
 }
 header h1{font-size:16px; margin:0; font-weight:700; letter-spacing:-.3px; flex:1}
 header .who{font-size:12px; opacity:.85; white-space:nowrap}
+header .who .org{opacity:.75}
 header button{background:rgba(255,255,255,.14); border:0; color:#fff;
   border-radius:7px; padding:6px 10px; font-size:13px}
 header button:hover{background:rgba(255,255,255,.25)}
+.hmenu{position:relative}
+.hmenu > button{font-size:16px; line-height:1; padding:5px 10px}
+.hmenu .drop{position:absolute; right:0; top:calc(100% + 6px); min-width:160px;
+  background:var(--paper); color:var(--ink); border:1px solid var(--line);
+  border-radius:10px; box-shadow:0 8px 24px rgba(20,30,50,.18); padding:6px; z-index:60}
+.hmenu .drop button{display:block; width:100%; text-align:left; background:transparent;
+  color:var(--ink); border-radius:7px; padding:9px 11px; font-size:14px}
+.hmenu .drop button:hover{background:#eef1f6}
+.hmenu .drop .sep{height:1px; background:var(--line); margin:4px 2px}
 
 /* ---------- 레이아웃 ---------- */
-main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
+main{max-width:860px; margin:0 auto; padding:14px 14px 96px;
   padding-top:calc(14px + var(--hh,56px))}
 .toolbar{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
 .toolbar select,.toolbar input{padding:8px 10px; border:1px solid var(--line);
@@ -262,7 +273,11 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 60px;
 .ownnone{font-size:12.5px; color:var(--muted); padding:6px 0}
 
 /* 대시보드 */
-.dcards{display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:8px; margin-bottom:14px}
+.dcards{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:8px}
+@media (max-width:760px){ .dcards{grid-template-columns:repeat(3,1fr)} }
+.dmore{font-size:12.5px; color:var(--muted); margin:0 0 14px}
+.dmore button{border:0; background:transparent; color:var(--brand); font-weight:600;
+  padding:0; text-decoration:underline; cursor:pointer}
 .dcard{padding:11px 12px; background:var(--paper); border:1px solid var(--line);
   border-radius:var(--radius); text-align:left; cursor:default}
 .dcard.click{cursor:pointer}
@@ -411,6 +426,19 @@ dl.kv dd{margin:0}
 .st-confirmed{background:#dcfce7; color:#15803d}
 .st-rejected{background:#fee2e2; color:#b91c1c}
 
+.toast{position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom));
+  transform:translateX(-50%); z-index:70; background:#1f2733; color:#fff;
+  padding:11px 16px; border-radius:10px; font-size:13.5px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+  max-width:calc(100% - 32px); opacity:0; transition:opacity .2s}
+.toast.on{opacity:1}
+.toast.bad{background:var(--danger)}
+.modal-bg{position:fixed; inset:0; background:rgba(15,20,30,.45); z-index:80;
+  display:grid; place-items:center; padding:20px}
+.modal{background:var(--paper); border-radius:14px; padding:22px 20px 18px; width:100%; max-width:380px;
+  box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal h3{margin:0 0 6px; font-size:17px}
+.modal p{margin:0 0 16px; font-size:14px; color:var(--muted); line-height:1.55}
+.modal .n{font-size:34px; font-weight:800; color:var(--brand); letter-spacing:-1px; line-height:1; margin:6px 0 10px}
 .fab{position:fixed; right:16px; bottom:calc(18px + env(safe-area-inset-bottom));
   z-index:15; border:0; background:var(--brand); color:#fff; font-weight:700;
   border-radius:26px; padding:14px 20px; box-shadow:0 4px 14px rgba(20,40,70,.28)}
@@ -421,12 +449,168 @@ dl.kv dd{margin:0}
 @media (max-width:520px){ .row2{grid-template-columns:1fr} }
 @media (max-width:480px){
   header h1{font-size:14px}
-  header .who{display:none}
+  header .who .org{display:none}
   header button{padding:6px 8px; font-size:12px}
+  .hmenu > button{padding:5px 9px}
 }
 @media (prefers-reduced-motion:no-preference){
   .card{transition:border-color .12s ease}
 }
+
+/* ============================================================
+   디자인 v3 (2026-09-19) — 아래 블록만 지우면 이전 디자인으로 돌아간다
+   ============================================================ */
+/* ============================================================
+   디자인 v3 제안 — 기존 구조 위에 덧입히는 스타일
+   방향 : 위계 만들기 (본문 > 보조), 카드 남발 줄이기, 숫자·라벨 정돈,
+          브라우저 기본 파일 버튼 제거, 여백 정리
+   ============================================================ */
+:root{
+  --ink:#141a24; --paper:#ffffff; --bg:#f3f5f9; --line:#e3e7ee; --line2:#cfd6e0;
+  --muted:#6b7482; --faint:#98a1b0;
+  --brand:#1b355c; --brand2:#2d5a94; --brand-soft:#e9eff8;
+  --danger:#b3261e; --danger-soft:#fbeae8;
+  --ok:#237a4a; --ok-soft:#e3f3ea; --warn:#9a6700; --warn-soft:#fdf1d8;
+  --radius:12px;
+}
+body{background:var(--bg); color:var(--ink); letter-spacing:-.01em;
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+
+/* ---- 헤더 : 살짝 더 어둡고, 제목에 마크 ---- */
+header{background:#16294a; padding-top:calc(11px + env(safe-area-inset-top)); padding-bottom:11px}
+header h1{font-size:15.5px; font-weight:700; display:flex; align-items:center; gap:9px}
+header h1::before{content:""; width:9px; height:9px; border-radius:3px; background:#7fb2ff; transform:rotate(45deg)}
+header .who{font-size:12.5px; opacity:.9}
+header button{background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); border-radius:8px}
+header button:hover{background:rgba(255,255,255,.2)}
+
+/* ---- 공통 컨트롤 ---- */
+.btn{border-radius:9px; font-weight:600; border-color:var(--line2)}
+.btn-primary{background:var(--brand); border-color:var(--brand)}
+.btn-primary:hover{background:#122543}
+.chip{font-weight:600; border-radius:6px; padding:3px 8px; letter-spacing:0}
+.st{font-weight:700; border-radius:6px}
+.field label{font-size:12.5px; letter-spacing:.02em}
+.field input,.field select,.field textarea{border-radius:9px; border-color:var(--line2)}
+.toolbar select,.toolbar input{border-radius:9px; border-color:var(--line2)}
+.note{color:var(--muted)}
+
+/* ---- 파일 선택 : 브라우저 기본 버튼 대신 ---- */
+.att-pick input[type=file]{font-size:0; width:auto; color:transparent}
+.att-pick input[type=file]::file-selector-button{
+  font-size:13.5px; font-weight:600; color:var(--brand); background:var(--brand-soft);
+  border:1px solid #c9d7ea; border-radius:9px; padding:8px 14px; cursor:pointer; margin:0;
+  font-family:inherit}
+.att-pick input[type=file]::file-selector-button:hover{background:#dde7f5}
+.att-pick::after{content:"파일을 여러 번 골라 추가할 수 있습니다"; font-size:12px; color:var(--faint)}
+.att-hint{font-size:11.5px; color:var(--faint)}
+
+/* ---- 대시보드 카드 : 숫자를 크게, 라벨은 작은 대문자 느낌 ---- */
+.dcards{gap:10px; margin-bottom:10px}
+.dcard{border-radius:12px; padding:13px 14px 12px; border-color:var(--line)}
+.dcard .dl{font-size:11.5px; letter-spacing:.02em; color:var(--muted)}
+.dcard .dv{font-size:26px; font-weight:800; letter-spacing:-.03em; margin-top:4px}
+.dcard.mine{border-color:#c9d7ea; background:#f7f9fd}
+.dcard.mine .dv{color:var(--brand2)}
+.dcard.hot{border-color:#efc4bf; background:#fff7f6}
+.dcard.zero .dv{color:#c3cad5}
+.dmore{font-size:12.5px}
+
+/* ---- 섹션 라벨 ---- */
+.rhead-line{margin:20px 0 10px}
+.rhead-line h3{font-size:12px; letter-spacing:.14em; color:var(--faint); text-transform:uppercase}
+.rhead-line .rule{background:var(--line)}
+
+/* ---- 방 타일 : 글자 마크 유지, 숫자는 한 줄 ---- */
+.rooms{gap:10px}
+.room{padding:14px 15px; border-left:1px solid var(--line); border-radius:12px; gap:10px;
+  box-shadow:0 1px 2px rgba(20,26,36,.04)}
+.room:hover{border-color:var(--line2); box-shadow:0 4px 14px -8px rgba(20,26,36,.25)}
+.room.warn{background:var(--paper)}
+.room-mark{flex:0 0 32px; height:32px; border-radius:9px; font-size:14.5px; font-weight:800}
+.room-name b{font-size:16px; letter-spacing:-.02em}
+.room-name span{font-size:12px; color:var(--faint)}
+.rpill{font-size:11.5px; border-radius:6px; padding:3px 8px; background:#f1f3f7; color:#4a5567}
+.rpill.on{background:var(--brand-soft); color:var(--brand2)}
+.rpill.late{background:var(--danger-soft); color:var(--danger); font-weight:600}
+.rpill.clear{background:var(--ok-soft); color:var(--ok)}
+.room-sub{font-size:11.5px; color:var(--faint)}
+.room-own{border-top:1px dashed var(--line); padding-top:9px; font-size:11.5px}
+.room-own em{font-weight:600}
+
+/* ---- 최근 움직임 : 카드 대신 리스트 ---- */
+.recent{margin-top:22px}
+#recentList{background:var(--paper); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.rec{border:0; border-bottom:1px solid var(--line); border-radius:0; margin:0; padding:11px 14px}
+.rec:last-child{border-bottom:0}
+.rec:hover{background:#f7f9fc}
+.rec .rk{border-radius:5px; font-weight:600}
+.rec .rw{color:var(--faint)}
+
+/* ---- 목록 카드 ---- */
+.card{border-radius:12px; padding:13px 14px 13px 18px; box-shadow:0 1px 2px rgba(20,26,36,.04)}
+.card::before{width:3px}
+.card h3{font-weight:600; font-size:15.5px}
+.card .meta{font-size:12px; color:var(--faint)}
+.card-right{flex-basis:96px; border-radius:10px; padding:10px 6px}
+.card-right b{font-size:14.5px; font-weight:700}
+
+/* ---- 방 헤더 / 세그먼트 ---- */
+.roomhead{border-radius:12px; padding:13px 15px}
+.roomhead .rh-main b{font-size:18px; letter-spacing:-.02em}
+.seg{border-radius:9px; font-weight:600}
+.seg.on{background:var(--brand); border-color:var(--brand)}
+
+/* ---- 상세 : 요청 본문은 카드, 나머지는 평평한 구역 ---- */
+.sheet{padding-top:10px}
+.sheet-bar{padding:10px 0 12px}
+#dBody .box{border:0; background:transparent; padding:6px 2px 4px; margin-bottom:22px}
+#dBody .box > h4, #dBody .box .box-head h4{
+  font-size:12px; letter-spacing:.14em; color:var(--faint); text-transform:uppercase; margin-bottom:12px;
+  padding-bottom:8px; border-bottom:1px solid var(--line)}
+#dBody .box:first-of-type{background:var(--paper); border:1px solid var(--line); border-radius:14px;
+  padding:18px 18px 16px; box-shadow:0 1px 2px rgba(20,26,36,.04), 0 10px 30px -22px rgba(20,26,36,.35)}
+.detail-title{font-size:21px; font-weight:700; letter-spacing:-.03em; line-height:1.3; margin:10px 0 14px}
+dl.kv{grid-template-columns:max-content 1fr; gap:6px 18px; font-size:13.5px}
+dl.kv dt{color:var(--faint)}
+.detail-body{font-size:15px; line-height:1.7; margin-top:14px; padding-top:14px}
+
+/* 회신 영역 — 흰 카드로 띄우고 결과 색만 강조 */
+#dBody .box.repbox{background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--brand);
+  border-radius:12px; padding:14px 16px 16px}
+#dBody .box.repbox > h4, #dBody .box.repbox .box-head h4{color:var(--brand); border-bottom:0; margin-bottom:8px; padding-bottom:0}
+.rep{border:1px solid var(--line); border-left-width:4px; border-radius:10px; padding:12px 14px}
+.repbadge{font-size:12px; font-weight:700; border-radius:6px; padding:3px 9px}
+.rep .why{font-weight:500}
+.repnone{border-radius:10px}
+
+/* 결재 / 확인 처리 : 안쪽 패널 */
+#dBody .apvbox{background:var(--paper); border:1px solid var(--line); border-left-width:4px; border-radius:12px; padding:14px 16px}
+#dBody .apvbox > h4{border-bottom:0; padding-bottom:0; margin-bottom:8px}
+#dBody .actions .btn{padding:10px 16px}
+
+/* 로그 이력 */
+.log{border-left-color:var(--line)}
+.log .lt{font-size:13.5px}
+.log .lm{color:var(--faint)}
+.unread{border-radius:10px}
+
+/* 특이사항 */
+.thread .head b{font-size:13.5px}
+
+/* ---- 글쓰기 ---- */
+#write .box{border-radius:14px; padding:20px 18px 18px}
+.opt{border-radius:12px}
+.opt .om b{font-size:14px}
+.opt.on{border-color:var(--brand2)}
+
+/* ---- FAB ---- */
+.fab{border-radius:14px; padding:13px 18px; box-shadow:0 8px 24px -8px rgba(22,41,74,.55)}
+
+/* ---- 계정/방 관리 ---- */
+.cat-row{border-radius:12px}
+.acct-row .nm{font-weight:600}
+
 </style>
 </head>
 <body>
@@ -465,8 +649,14 @@ const IDLE_LIMIT_MIN = 30;
   <span class="who" id="who"></span>
   <button id="btnStat">통계</button>
   <button id="btnAcct" class="hidden">계정</button>
-  <button id="btnPw">비밀번호</button>
-  <button id="btnOut">로그아웃</button>
+  <span class="hmenu">
+    <button id="btnMore" aria-label="더보기" aria-haspopup="true">⋯</button>
+    <div class="drop hidden" id="hDrop">
+      <button id="btnPw">비밀번호 변경</button>
+      <div class="sep"></div>
+      <button id="btnOut">로그아웃</button>
+    </div>
+  </span>
 </header>
 
 <!-- ============ 목록 ============ -->
@@ -477,6 +667,7 @@ const IDLE_LIMIT_MIN = 30;
 
     <div id="roomHome">
       <div class="dcards" id="rDigest"></div>
+      <p class="dmore" id="rMore"></p>
       <div class="rhead-line"><h3>업무 방</h3><span class="rule"></span></div>
       <div class="rooms" id="roomGrid"></div>
       <div class="rhact">
@@ -500,9 +691,9 @@ const IDLE_LIMIT_MIN = 30;
       <label class="carry"><input type="checkbox" id="fCarry" checked>이월 미완료 포함</label>
     </div>
     <div class="segbar" id="segBar">
-      <button type="button" class="seg on" data-seg="in">받은 요청 <span class="segn" id="segInN"></span></button>
+      <button type="button" class="seg on" data-seg="all">전체</button>
+      <button type="button" class="seg" data-seg="in">받은 요청 <span class="segn" id="segInN"></span></button>
       <button type="button" class="seg" data-seg="out">보낸 요청 <span class="segn" id="segOutN"></span></button>
-      <button type="button" class="seg" data-seg="all">전체</button>
     </div>
     <div class="toolbar">
       <select id="fStatus">
@@ -705,8 +896,7 @@ const inDir       = () => isCatering() ? "v2c" : "c2v";   // 내가 '받은' 요
 const outDir      = () => isCatering() ? "c2v" : "v2c";   // 내가 '보낸' 요청
 const isRequester = p => myOrg() === D(p).from;
 const isPerformer = p => myOrg() === D(p).to;
-let curSeg = "in";                                        // 목록 세그먼트
-let segPicked = false;                                    // 최초 자동 선택 여부
+let curSeg = "all";                                       // 목록 세그먼트 (기본: 전체)
 
 /* ---------- 방 ----------
    분류(categories)를 '방'으로 쓴다. posts.category_id 가 방 연결이다.
@@ -756,6 +946,17 @@ function fmt(ts, withTime = true){
   return withTime ? `${base} ${p(d.getHours())}:${p(d.getMinutes())}` : base;
 }
 const nameOf = id => PROFILES[id]?.name || "알 수 없음";
+
+/* 하단 토스트 — alert 대신 조용히 알릴 때 */
+let TOAST_T = null;
+function toast(msg, bad = false){
+  let el = $("toast");
+  if(!el){ el = document.createElement("div"); el.id = "toast"; el.className = "toast"; document.body.appendChild(el); }
+  el.textContent = msg; el.classList.toggle("bad", !!bad);
+  requestAnimationFrame(() => el.classList.add("on"));
+  clearTimeout(TOAST_T);
+  TOAST_T = setTimeout(() => el.classList.remove("on"), bad ? 6000 : 3200);
+}
 const isCatering = () => me?.org === "catering";
 const isOverdue  = p => p.due_at && ACTIVE.includes(p.status) && new Date(p.due_at) < new Date();
 
@@ -861,7 +1062,12 @@ async function login(){
 
 $("btnOut").onclick = () => forceLogout();
 
-$("btnPw").onclick = changePassword;
+/* ⋯ 메뉴 */
+$("btnMore").onclick = e => { e.stopPropagation(); $("hDrop").classList.toggle("hidden"); };
+document.addEventListener("click", e => {
+  if(!e.target.closest(".hmenu")) $("hDrop").classList.add("hidden");
+});
+$("btnPw").onclick = () => { $("hDrop").classList.add("hidden"); changePassword(); };
 
 async function changePassword(){
   const pw = prompt("새 비밀번호를 입력하세요 (6자 이상)");
@@ -904,14 +1110,18 @@ async function start(){
   $("login").classList.add("hidden");
   $("topbar").classList.remove("hidden");
   $("app").classList.remove("hidden");
-  $("who").textContent = `${me.name} · ${isCatering() ? "케이터링" : "KTS"}`;
+  $("who").innerHTML = `${esc(me.name)} <span class="org">· ${isCatering() ? "케이터링" : "KTS"}</span>`;
   syncHeaderHeight();
   touchActivity();
   startIdleWatch();
   drawPwBanner();
   $("fabNew").classList.remove("hidden");            // 양쪽 모두 요청을 올릴 수 있다
   if(isCatering()) $("fHiddenWrap").classList.remove("hidden");
-  else $("btnStat").classList.add("hidden");         // 통계·월마감은 케이터링 업무
+  else {
+    $("btnStat").classList.add("hidden");            // 통계·월마감은 케이터링 업무
+    const o = $("fStatus").querySelector('option[value="apv"]');
+    if(o) o.remove();                                // 결재는 도급사와 무관
+  }
   if(me.role === "admin") $("btnAcct").classList.remove("hidden");
 
   const [{data:pl}, {data:cl}] = await Promise.all([
@@ -924,6 +1134,7 @@ async function start(){
   drawCatOptions(myNewDir());
 
   await loadList();
+  showApprovalPopup();
 
   // 메일의 "확인하러 가기" 링크로 들어온 경우 해당 건을 바로 연다
   const 링크 = Number(new URLSearchParams(location.search).get("post"));
@@ -941,21 +1152,39 @@ async function start(){
 }
 
 /* ---------- 목록 ---------- */
+let LOAD_ERR = null;                     // 마지막 목록 로드 오류 (배너 표시용)
+
 async function loadList(){
   // 최신 300건 + 미완료 전건(기간 무관) → 오래된 미처리 건이 누락되지 않도록 합침
-  const [pr, pa, rd, cm, rp, at] = await Promise.all([
+  const [pr, pa, rd] = await Promise.all([
     sb.from("posts").select("*").order("created_at", {ascending:false}).limit(300),
     sb.from("posts").select("*").in("status", ACTIVE).order("created_at", {ascending:false}),
-    sb.from("post_reads").select("*").eq("user_id", me.id),
-    sb.from("comments").select("id,post_id,author_id,created_at"),
-    sb.from("reports").select("id,post_id,reporter_id,reported_at,result"),
-    sb.from("attachments").select("post_id,report_id,comment_id")
+    sb.from("post_reads").select("*").eq("user_id", me.id)
   ]);
+  LOAD_ERR = pr.error || pa.error || null;
+  if(LOAD_ERR){                          // 실패하면 이전 자료를 유지하고 배너만 띄운다
+    render(); return;
+  }
   const merged = new Map();
   [...(pr.data || []), ...(pa.data || [])].forEach(p => merged.set(p.id, p));
   POSTS = [...merged.values()].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-  COMMENTS = cm.data || []; REPORTS = rp.data || [];
   READS = {}; (rd.data || []).forEach(r => READS[r.post_id] = r);
+
+  // 회신·특이사항·첨부는 화면에 있는 글 범위로만 읽는다 (자료가 쌓여도 가볍게)
+  const ids = POSTS.map(p => p.id);
+  let cm = {data:[]}, rp = {data:[]}, at = {data:[]};
+  if(ids.length){
+    [cm, rp] = await Promise.all([
+      sb.from("comments").select("id,post_id,author_id,created_at").in("post_id", ids),
+      sb.from("reports").select("id,post_id,reporter_id,reported_at,result").in("post_id", ids)
+    ]);
+    const rIds = (rp.data || []).map(r => r.id), cIds = (cm.data || []).map(c => c.id);
+    const or = [`post_id.in.(${ids.join(",")})`];
+    if(rIds.length) or.push(`report_id.in.(${rIds.join(",")})`);
+    if(cIds.length) or.push(`comment_id.in.(${cIds.join(",")})`);
+    at = await sb.from("attachments").select("post_id,report_id,comment_id").or(or.join(","));
+  }
+  COMMENTS = cm.data || []; REPORTS = rp.data || [];
 
   // 첨부 개수를 지시 단위로 집계 (보고·댓글에 달린 것까지 합산)
   const byReport = {}, byComment = {};
@@ -967,14 +1196,14 @@ async function loadList(){
     if(pid) ATT_COUNT[pid] = (ATT_COUNT[pid] || 0) + 1;
   });
 
-  // 처음 들어왔을 때 '받은 요청'이 비어 있으면 빈 화면이 보이므로 '전체'로 시작한다
-  if(!segPicked){
-    segPicked = true;
-    const 받은게있다 = POSTS.some(p =>
-      !p.deleted_at && dirOf(p) === inDir() && ACTIVE.includes(p.status));
-    if(!받은게있다) setSeg("all", false);
-  }
   render();
+}
+
+/* 방에 들어갈 때 필터를 깨끗하게 — 대시보드 카드로 걸어둔 필터가 남지 않게 */
+function resetFilters(){
+  $("fQ").value = ""; SEARCH_ON = false; SEARCH_POSTS = []; SEARCH_BUSY = false;
+  $("fStatus").value = "all"; $("fCat").value = "";
+  setSeg("all", false);
 }
 
 function unreadCount(p){
@@ -1033,27 +1262,32 @@ function drawDigest(보임){
       <div class="dl">${라벨}</div><div class="dv tnum">${값}</div>
     </${클릭 ? "button" : "div"}>`;
 
+  // 카드는 항상 6개 — 여섯 번째는 결재 건이 있으면 결재, 없으면 오늘 등록
+  const 여섯째 = (isCatering() && 결재대기)
+    ? card(me.can_approve ? "내가 결재할 건" : "결재 대기", 결재대기, me.can_approve ? "hot" : "mine", "apv")
+    : card("오늘 등록", 오늘, 오늘 ? "" : "zero", null);
+
   $("rDigest").innerHTML =
       card("내가 처리할 건", 받은미처리, 받은미처리 ? "mine" : "zero", "in")
     + card("회신 확인 필요", 확인요망,   확인요망 ? "mine" : "zero", "chk")
     + card("내가 보낸 미완료", 보낸미처리, 보낸미처리 ? "" : "zero", "out")
     + card("기한 초과",      초과,      초과 ? "hot" : "zero", 초과 ? "late" : null)
     + card("마감 임박 24h",  임박,      임박 ? "" : "zero", null)
-    + card("오늘 등록",      오늘,      오늘 ? "" : "zero", null)
-    + (결재대기 ? card(me.can_approve ? "내가 결재할 건" : "결재 대기",
-                      결재대기, me.can_approve ? "hot" : "mine", "apv") : "")
-    + (방없음 ? card("방 없음", 방없음, "", "none") : "");
+    + 여섯째;
 
-  $("rDigest").querySelectorAll("[data-go]").forEach(el => el.onclick = () => {
-    const g = el.dataset.go;
+  $("rMore").innerHTML = 방없음
+    ? `방이 삭제된 글 <b>${방없음}건</b> — <button type="button" data-go="none">전체 목록에서 보기</button>` : "";
+
+  const go = g => {
     curRoomId = "all";
+    $("fQ").value = ""; SEARCH_ON = false; SEARCH_POSTS = [];
     $("fCat").value = g === "none" ? "none" : "";
-    $("fStatus").value = g === "chk" ? "reported" : g === "apv" ? "apv" : "active";
-    if(g === "in")  setSeg("in",  false);
-    if(g === "out") setSeg("out", false);
-    if(g === "chk" || g === "late" || g === "none" || g === "apv") setSeg("all", false);
+    $("fStatus").value = g === "chk" ? "reported" : g === "apv" ? "apv" : g === "none" ? "all" : "active";
+    setSeg(g === "in" ? "in" : g === "out" ? "out" : "all", false);
     render(); window.scrollTo(0,0);
-  });
+  };
+  $("rDigest").querySelectorAll("[data-go]").forEach(el => el.onclick = () => go(el.dataset.go));
+  $("rMore").querySelectorAll("[data-go]").forEach(el => el.onclick = () => go(el.dataset.go));
 }
 
 /* 최근 움직임 — 등록·회신·특이사항을 합쳐 최신 6건 */
@@ -1067,7 +1301,13 @@ function drawRecent(보임){
     ev.push({t:c.created_at, k:"특이사항", p:map[c.post_id], w:nameOf(c.author_id)}); });
 
   ev.sort((a,b) => new Date(b.t) - new Date(a.t));
-  const rows = ev.slice(0, 6);
+  // 같은 글은 가장 최근 움직임 하나만 남긴다
+  const seen = new Set(), rows = [];
+  for(const e of ev){
+    if(seen.has(e.p.id)) continue;
+    seen.add(e.p.id); rows.push(e);
+    if(rows.length >= 6) break;
+  }
   $("recentWrap").classList.toggle("hidden", !rows.length);
   $("recentList").innerHTML = rows.map(e => {
     const c = roomOf(e.p.category_id);
@@ -1090,7 +1330,7 @@ function drawRoomHome(){
   $("roomGrid").innerHTML = live.length ? live.map(c => {
     const st = roomStat(c.id);
     return `<button type="button" class="room${st.late ? " warn" : ""}" data-rid="${c.id}"
-        style="--rc:${st.late ? "var(--danger)" : roomColor(c)}">
+        style="--rc:${roomColor(c)}">
       <span class="room-top">
         <span class="room-mark" style="background:${roomColor(c)}">${esc(c.name.slice(0,1))}</span>
         <span class="room-name"><b>${esc(c.name)}</b>
@@ -1114,8 +1354,7 @@ function drawRoomHome(){
 
   $("roomGrid").querySelectorAll("[data-rid]").forEach(el => el.onclick = () => {
     curRoomId = Number(el.dataset.rid);
-    $("fQ").value = ""; SEARCH_ON = false; SEARCH_POSTS = [];
-    $("fCat").value = "";
+    resetFilters();
     render(); window.scrollTo(0,0);
   });
 
@@ -1155,6 +1394,10 @@ function render(){
   if(curRoomId === null){
     $("roomHome").classList.remove("hidden");
     $("listArea").classList.add("hidden");
+    $("banner").innerHTML = LOAD_ERR ? `<div class="banner banner-warn">
+      <b>자료를 불러오지 못했습니다.</b> ${esc(LOAD_ERR.message || "네트워크를 확인해주세요.")}
+      <button class="btn btn-sm" id="reloadBtn" style="margin-left:8px">다시 시도</button></div>` : "";
+    if($("reloadBtn")) $("reloadBtn").onclick = () => loadList();
     drawRoomHome();
     return;
   }
@@ -1207,7 +1450,13 @@ function render(){
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
-  // 검색 안내 문구
+  // 검색 안내 문구 · 로드 오류
+  if(LOAD_ERR){
+    $("banner").innerHTML = `<div class="banner banner-warn">
+      <b>자료를 불러오지 못했습니다.</b> ${esc(LOAD_ERR.message || "네트워크를 확인해주세요.")}
+      <button class="btn btn-sm" id="reloadBtn" style="margin-left:8px">다시 시도</button></div>`;
+    $("reloadBtn").onclick = () => loadList();
+  } else
   $("banner").innerHTML = 검색중
     ? `<div class="banner">전 기간에서 "<b>${esc($("fQ").value.trim())}</b>" 검색 결과 ${rows.length}건
          · 월 필터는 잠시 해제됩니다.
@@ -1227,7 +1476,9 @@ function render(){
   }
   $("list").innerHTML = rows.map(p => {
     const st = ST[p.status], cat = CATS.find(c => c.id === p.category_id);
-    const n = unreadCount(p), late = isOverdue(p), soon = isDueSoon(p);
+    let n = unreadCount(p);
+    if(n === -1 && p.author_id === me.id) n = 0;        // 내가 쓴 글은 '안 본 글'이 아니다
+    const late = isOverdue(p), soon = isDueSoon(p);
     const rep = latestReport(p.id);
     const badge = n === -1 ? `<span class="badge-n">NEW</span>`
                 : n > 0    ? `<span class="badge-n">${n}</span>` : "";
@@ -1278,7 +1529,7 @@ function render(){
 }
 
 $("goAllList").onclick = () => {
-  curRoomId = "all"; render(); window.scrollTo(0,0);
+  curRoomId = "all"; resetFilters(); render(); window.scrollTo(0,0);
 };
 $("fStatus").onchange = render;
 $("fCat").onchange = render;
@@ -1450,8 +1701,10 @@ async function deleteAttachment(id){
   await refreshDetail();
 }
 
+/* 요청 첨부 : 올린 사람 또는 요청한 쪽 / 회신·특이사항 첨부(증빙) : 올린 사람만 / 관리자는 전부 */
 const canDeleteAtt = a => a.uploader_id === me.id
-  || (currentPost ? isRequester(currentPost) : isCatering());
+  || (me && me.role === "admin")
+  || (!!a.post_id && currentPost && isRequester(currentPost));
 
 function attListHtml(list){
   if(!list.length) return "";
@@ -2664,7 +2917,7 @@ const LOG_COLOR = {
   reported:"#7c4ddb", commented:"#69707d",
   confirmed:"#2f9e58", rejected:"#c2352b", unconfirmed:"#b45309", edited:"#b45309",
   report_edited:"#7c4ddb", hidden:"#69707d", restored:"#69707d",
-  mail_failed:"#c2352b",
+  mail_failed:"#c2352b", att_deleted:"#69707d",
   approval_requested:"#b45309", approved:"#2f9e58", returned:"#c2352b", resubmitted:"#b45309"
 };
 
@@ -2702,8 +2955,17 @@ function buildLog(comments, reports){
   comments.forEach(c => push(c.created_at, "commented",
     `<b>${esc(nameOf(c.author_id))}</b> 님이 특이사항을 남겼습니다.`));
 
-  ATTS.forEach(a => push(a.created_at, "attached",
-    `<b>${esc(nameOf(a.uploader_id))}</b> 님이 파일을 첨부했습니다. — ${esc(a.file_name)}`));
+  // 첨부 이력 — 트리거가 남긴 이벤트가 있으면 그것을 쓴다 (파일을 지워도 남는다)
+  const 첨부이벤트 = POST_EVENTS.filter(e => e.kind === "attached" || e.kind === "att_deleted");
+  첨부이벤트.forEach(e => push(e.created_at, e.kind,
+    `<b>${esc(nameOf(e.actor_id))}</b> 님이 파일을 ${e.kind === "attached" ? "첨부" : "삭제"}했습니다. — ${esc(e.detail || "")}`));
+  // 트리거 도입 전 첨부는 attachments 표로 보완 (같은 파일명 이벤트가 없을 때만)
+  ATTS.forEach(a => {
+    const 있음 = 첨부이벤트.some(e => e.kind === "attached" && e.detail === a.file_name
+      && Math.abs(new Date(e.created_at) - new Date(a.created_at)) < 120000);
+    if(!있음) push(a.created_at, "attached",
+      `<b>${esc(nameOf(a.uploader_id))}</b> 님이 파일을 첨부했습니다. — ${esc(a.file_name)}`);
+  });
 
   const DECIDE = {
     confirmed:   "확인완료 처리했습니다.",
@@ -2995,6 +3257,35 @@ function drawDetail(comments, reports){
   bindAttEvents($("dBody"));
 }
 
+/* 결재자가 들어오면 대기 건을 바로 알린다 — 로그인당 1회 */
+function showApprovalPopup(){
+  if(!me || !me.can_approve) return;
+  const n = POSTS.filter(p => !p.deleted_at && p.approval === "pending").length;
+  if(!n) return;
+  try{ if(sessionStorage.getItem("apv_popup") === String(n)) return; }catch(e){}
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <h3>결재 대기 건이 있습니다</h3>
+      <div class="n tnum">${n}건</div>
+      <p>파트장 승인을 기다리는 업무 요청입니다. 승인 전에는 도급사(KTS)에게 보이지 않습니다.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="apvGo">결재 건 보기</button>
+        <button class="btn" id="apvLater">나중에</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  const close = () => { bg.remove(); try{ sessionStorage.setItem("apv_popup", String(n)); }catch(e){} };
+  bg.querySelector("#apvLater").onclick = close;
+  bg.onclick = e => { if(e.target === bg) close(); };
+  bg.querySelector("#apvGo").onclick = () => {
+    close();
+    curRoomId = "all"; resetFilters();
+    $("fStatus").value = "apv";
+    render(); window.scrollTo(0,0);
+  };
+}
+
 /* ---------- 파트장 결재 ---------- */
 function apvHtml(p){
   const a = p.approval || "none";
@@ -3119,6 +3410,17 @@ async function decide(status){
   await refreshDetail();
 }
 
+/* 이 글의 메일이 실제로 누구에게 가는지 (DB 함수와 같은 규칙) */
+function mailTargetText(p){
+  const cat = roomOf(p.category_id);
+  const 담당 = ownerIds(dirOf(p) === "c2v" ? cat?.owner_vendor : cat?.owner_catering)
+    .map(id => PROFILES[id]).filter(u => u && u.active !== false);
+  if(담당.length)
+    return `${cat ? cat.name + " 방 담당 " : ""}${담당.map(u => u.name).join(", ")} 님에게`;
+  const 전원 = Object.values(PROFILES).filter(u => u.org === D(p).to && u.active !== false).length;
+  return `담당이 없어 ${D(p).toName} 전원(${전원}명)에게`;
+}
+
 /* ---------- 메일 발송 ---------- */
 async function sendMail(시험){
   let 시험주소 = null;
@@ -3130,10 +3432,10 @@ async function sendMail(시험){
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(시험주소)){ alert("이메일 형식이 올바르지 않습니다."); return; }
   } else {
     const 보낸적 = POST_EVENTS.filter(e => e.kind === "mailed").pop();
-    const 받는곳 = D(currentPost).toName;
+    const 받는곳 = mailTargetText(currentPost);
     if(!confirm(보낸적
-      ? `이미 ${fmt(보낸적.created_at)}에 발송했습니다.\n${받는곳} 전원에게 다시 보낼까요?`
-      : `${받는곳} 전원에게 이 업무 요청을 메일로 보낼까요?`)) return;
+      ? `이미 ${fmt(보낸적.created_at)}에 발송했습니다.\n\n${받는곳} 다시 보낼까요?`
+      : `${받는곳} 이 업무 요청을 메일로 보낼까요?`)) return;
   }
 
   const btn = 시험 ? $("cMailTest") : $("cMail");
@@ -3148,39 +3450,39 @@ async function sendMail(시험){
     return;
   }
 
-  // 실제 전송 결과는 잠시 뒤에 확인된다
-  btn.textContent = "결과 확인 중…";
+  // 바로 화면을 돌려주고, 실제 전송 결과는 뒤에서 확인한다
+  toast(시험 ? `시험 메일 발송 요청 · ${data.names}` : `메일 발송 요청 · ${data.count}명 (${data.names})`);
+  await refreshDetail();
+  watchMailResult(data.request_id, data.count, 시험);
+}
+
+/* 발송 결과를 뒤에서 최대 20초 확인 — 성공은 토스트, 실패는 알림 */
+async function watchMailResult(requestId, count, 시험){
   let 결과 = null;
-  for(let i = 0; i < 6; i++){
-    await new Promise(r => setTimeout(r, 1200));
-    const {data: st} = await sb.rpc("check_mail_result", {p_request_id: data.request_id});
+  for(let i = 0; i < 10; i++){
+    await new Promise(r => setTimeout(r, 2000));
+    const {data: st} = await sb.rpc("check_mail_result", {p_request_id: requestId});
     if(st && st.state !== "pending"){ 결과 = st; break; }
   }
-
-  if(!결과)
-    alert(`발송을 요청했습니다. (${data.names})\n\n`
-        + "전송 결과 확인이 늦어지고 있습니다. 잠시 뒤 메일함을 확인해주세요.");
-  else if(결과.state === "ok")
-    alert(시험 ? `시험 메일을 보냈습니다.\n${data.names}\n\n도급사에게는 가지 않았습니다.`
-               : `${data.count}명에게 메일을 보냈습니다.\n${data.names}`);
-  else {
-    const 응답 = 결과.message || "";
-    const IP차단 = 결과.status === 401 && /IP\s*address/i.test(응답);
-    const 안내 = IP차단
-      ? "→ API 키 문제가 아닙니다.\n"
-        + "  Brevo의 '승인된 IP(Authorised IPs)' 보안 기능이 발송 서버를 막고 있습니다.\n"
-        + "  Brevo 로그인 → 위 링크(app.brevo.com/security/authorised_ips) 에서\n"
-        + "  IP 인증 기능을 끄면 해결됩니다.\n\n"
-        + "  발송은 Supabase 서버에서 나가고 그 IP는 고정이 아니므로,\n"
-        + "  IP를 하나 등록하는 방식은 나중에 다시 막힙니다."
-      : 결과.status === 401 ? "→ API 키를 확인하세요."
-      : 결과.status === 400 ? "→ 발신 주소가 Brevo에서 인증되었는지 확인하세요."
-      : "";
-    alert("메일 서버가 거부했습니다.\n\n"
-        + `응답 코드 ${결과.status}\n${응답}\n\n` + 안내);
+  if(!결과){ toast("메일 전송 결과 확인이 늦어지고 있습니다. 잠시 뒤 메일함을 확인해주세요.", true); return; }
+  if(결과.state === "ok"){
+    toast(시험 ? "시험 메일 전송 완료" : `메일 전송 완료 · ${count}명`);
+    if(currentPost && !$("detail").classList.contains("hidden")) await refreshDetail();
+    return;
   }
-
-  await refreshDetail();
+  const 응답 = 결과.message || "";
+  const IP차단 = 결과.status === 401 && /IP\s*address/i.test(응답);
+  const 안내 = IP차단
+    ? "→ API 키 문제가 아닙니다.\n"
+      + "  Brevo의 '승인된 IP(Authorised IPs)' 보안 기능이 발송 서버를 막고 있습니다.\n"
+      + "  Brevo 로그인 → Settings → Security → Authorized IPs 에서\n"
+      + "  API keys 행의 'Deactivate for API' 를 누르면 해결됩니다.\n\n"
+      + "  발송 서버 IP는 고정이 아니므로 IP를 등록하는 방식은 다시 막힙니다."
+    : 결과.status === 401 ? "→ API 키를 확인하세요."
+    : 결과.status === 400 ? "→ 발신 주소가 Brevo에서 인증되었는지 확인하세요."
+    : "";
+  alert("메일 서버가 거부했습니다.\n\n" + `응답 코드 ${결과.status}\n${응답}\n\n` + 안내);
+  if(currentPost && !$("detail").classList.contains("hidden")) await refreshDetail();
 }
 
 /* 확인완료 되돌리기 — 보고가 있으면 확인 요망, 없으면 진행 중으로 */
@@ -3384,12 +3686,15 @@ $("wSave").onclick = async () => {
   }
 
   // 등록 직후 바로 메일을 보낼 수 있게 물어본다
-  if(confirm(`등록했습니다.\n\n${DIR[myNewDir()].toName} 전원에게 메일로 알릴까요?\n\n`
+  if(confirm(`등록했습니다.\n\n${mailTargetText(data)} 메일로 알릴까요?\n\n`
            + "아니오를 눌러도 나중에 상세 화면의 [✉ 메일 발송] 버튼으로 보낼 수 있습니다.")){
     const r = await sb.rpc("send_post_mail", {p_post_id: data.id, p_test_email: null});
     if(r.error) alert("메일을 보내지 못했습니다.\n\n" + r.error.message
                     + "\n\n등록은 정상 완료됐습니다. 상세 화면에서 다시 시도해주세요.");
-    else alert(`${r.data.count}명에게 메일을 보냈습니다.\n${r.data.names}`);
+    else {
+      toast(`메일 발송 요청 · ${r.data.count}명 (${r.data.names})`);
+      watchMailResult(r.data.request_id, r.data.count, false);
+    }
     await loadList();
   }
 };
