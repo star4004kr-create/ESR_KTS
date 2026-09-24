@@ -352,6 +352,8 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 96px;
 /* 상단 헤더는 항상 보이도록, 겹치지 않게 그 아래에서 시작한다 */
 #detail,#write,#stat,#acct,#alerts{position:fixed; top:var(--hh,56px); left:0; right:0; bottom:0;
   background:var(--bg); z-index:30; overflow-y:auto}
+/* 상단 버튼으로 여는 화면(통계·계정·알림 설정)은 상세·글쓰기보다 위. 그중 마지막으로 연 것이 맨 위 (bringFront) */
+#stat,#acct,#alerts{z-index:35}
 
 /* ---------- 계정 관리 ---------- */
 .acct-row{display:grid; grid-template-columns:1fr auto; gap:8px 12px;
@@ -365,6 +367,16 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 96px;
 .tag-off{background:#fee2e2; color:#b91c1c}
 .acct-grp{font-size:12px; color:var(--muted); font-weight:700; margin:14px 0 2px}
 .acct-grp:first-child{margin-top:0}
+/* 소속별 묶음 — 케이터링(남색) / 도급사(청록) 머리띠로 구분 */
+.acct-sec{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:18px; background:var(--paper)}
+.acct-sec:first-child{margin-top:0}
+.acct-sec > .acct-grp{margin:0; padding:11px 16px; font-size:14.5px; color:#fff; display:flex; align-items:center; gap:8px}
+.acct-sec > .acct-grp .n{margin-left:auto; font-size:12.5px; font-weight:700; background:rgba(255,255,255,.18);
+  border-radius:20px; padding:2px 10px}
+.acct-cat > .acct-grp{background:#1e3a5f}
+.acct-ven > .acct-grp{background:#2f6b68}
+.acct-sec > .acct-row{padding:12px 16px}
+.acct-sec > .note{padding:12px 16px; margin:0}
 .acct-editing{background:var(--brand-soft); border-radius:8px;
   padding:14px 12px 4px; margin:6px 0}
 .acct-editing .field{margin-bottom:12px}
@@ -816,7 +828,7 @@ const IDLE_LIMIT_MIN = 30;
 <!-- ============ 알림 설정 (개인) ============ -->
 <div id="alerts" class="hidden"><div class="sheet">
   <div class="sheet-bar">
-    <button class="btn btn-sm" id="alBack">← 목록</button>
+    <button class="btn btn-sm" id="alBack">← 닫기</button>
     <strong>알림 설정</strong>
   </div>
   <div class="box">
@@ -1442,41 +1454,21 @@ async function pushGuide(){
 /* ---------- 알림 설정 화면 ---------- */
 $("btnAlert").onclick = () => { $("hDrop").classList.add("hidden"); openAlerts(); };
 $("alBack").onclick = () => $("alerts").classList.add("hidden");
+/* 상단 버튼 화면 중 방금 연 것을 맨 위로 (계정 화면에서 통계·알림 설정을 눌러도 가려지지 않게) */
+function bringFront(id){
+  ["stat","acct","alerts"].forEach(k => { $(k).style.zIndex = k === id ? 36 : 35; });
+}
 async function openAlerts(){
+  bringFront("alerts");
   $("alerts").classList.remove("hidden"); window.scrollTo(0,0);
   await drawAlerts();
 }
 const 내담당 = c => ownerIds(isCatering() ? c.owner_catering : c.owner_vendor).includes(me.id);
 
 async function drawAlerts(){
-  const why = pushBlockedReason();
-  const 켜짐 = why ? false : await pushActiveHere();
-  $("alDev").checked = 켜짐; $("alDev").disabled = !!why;
-  $("alDevSub").textContent = 켜짐 ? `켜짐 · ${me.name} 계정에 연결됨` : "꺼짐 · 켜면 이 기기로 알림이 옵니다";
-  $("alDevNote").textContent = why
-    || (IS_MOBILE ? "" : "PC는 브라우저가 켜져 있을 때 화면 오른쪽 아래에 알림이 뜹니다. 알림을 켜지 않아도 메일은 그대로 옵니다.");
-  $("alTest").disabled = !켜짐;
-
-  const [{data:devs}, {data:ra}, here] = await Promise.all([
-    sb.from("push_subs").select("id,endpoint,ua,created_at").eq("user_id", me.id).order("created_at"),
-    sb.from("room_alerts").select("category_id,enabled").eq("user_id", me.id),
-    currentSub()
-  ]);
-  const 여기 = here ? here.endpoint : null;
-  $("alDevices").innerHTML = (devs || []).length
-    ? `<b style="font-size:13px">알림 받는 내 기기</b><table class="aldevs">` + devs.map((d, i) => `<tr>
-        <td>${esc(d.ua || "기기")}${d.endpoint === 여기 ? " <b>(이 기기)</b>" : ""}</td>
-        <td class="note">${fmt(d.created_at, false)} 등록</td>
-        <td style="text-align:right"><button class="btn btn-sm" data-rmdev="${i}">해제</button></td></tr>`).join("") + `</table>`
-    : `<p class="note" style="margin:0">알림을 켠 기기가 없습니다.</p>`;
-  $("alDevices").querySelectorAll("[data-rmdev]").forEach(b => b.onclick = async () => {
-    const d = devs[Number(b.dataset.rmdev)];
-    if(!confirm(`"${d.ua || "기기"}" 의 알림을 해제할까요?`)) return;
-    if(d.endpoint === 여기) await pushUnsubscribe();
-    else await sb.rpc("push_unregister", {p_endpoint:d.endpoint});
-    await drawAlerts();
-  });
-
+  // (1) 방 목록 먼저 — 기기 확인(서비스 워커)이 늦어도 바로 보이게
+  $("alDevSub").textContent = "확인 중…";
+  const {data:ra} = await sb.from("room_alerts").select("category_id,enabled").eq("user_id", me.id);
   const RA = {}; (ra || []).forEach(r => RA[r.category_id] = r.enabled);
   $("alRooms").innerHTML = liveRooms().map(c => {
     const on = c.id in RA ? RA[c.id] : 내담당(c);
@@ -1491,6 +1483,33 @@ async function drawAlerts(){
       {user_id:me.id, category_id:id, enabled:cb.checked, updated_at:new Date().toISOString()});
     if(error){ cb.checked = !cb.checked; alert("저장하지 못했습니다: " + error.message); return; }
     toast(`${c ? c.name : "방"} 알림을 ${cb.checked ? "켰습니다" : "껐습니다"}`);
+  });
+
+  // (2) 이 기기 · 내 기기 목록
+  const why = pushBlockedReason();
+  const [켜짐, here, dv] = await Promise.all([
+    why ? false : pushActiveHere(),
+    currentSub(),
+    sb.from("push_subs").select("id,endpoint,ua,created_at").eq("user_id", me.id).order("created_at")
+  ]);
+  $("alDev").checked = 켜짐; $("alDev").disabled = !!why;
+  $("alDevSub").textContent = 켜짐 ? `켜짐 · ${me.name} 계정에 연결됨` : "꺼짐 · 켜면 이 기기로 알림이 옵니다";
+  $("alDevNote").textContent = why
+    || (IS_MOBILE ? "" : "PC는 브라우저가 켜져 있을 때 화면 오른쪽 아래에 알림이 뜹니다. 알림을 켜지 않아도 메일은 그대로 옵니다.");
+  $("alTest").disabled = !켜짐;
+  const devs = dv.data || [], 여기 = here ? here.endpoint : null;
+  $("alDevices").innerHTML = devs.length
+    ? `<b style="font-size:13px">알림 받는 내 기기</b><table class="aldevs">` + devs.map((d, i) => `<tr>
+        <td>${esc(d.ua || "기기")}${d.endpoint === 여기 ? " <b>(이 기기)</b>" : ""}</td>
+        <td class="note">${fmt(d.created_at, false)} 등록</td>
+        <td style="text-align:right"><button class="btn btn-sm" data-rmdev="${i}">해제</button></td></tr>`).join("") + `</table>`
+    : `<p class="note" style="margin:0">알림을 켠 기기가 없습니다.</p>`;
+  $("alDevices").querySelectorAll("[data-rmdev]").forEach(b => b.onclick = async () => {
+    const d = devs[Number(b.dataset.rmdev)];
+    if(!confirm(`"${d.ua || "기기"}" 의 알림을 해제할까요?`)) return;
+    if(d.endpoint === 여기) await pushUnsubscribe();
+    else await sb.rpc("push_unregister", {p_endpoint:d.endpoint});
+    await drawAlerts();
   });
 }
 $("alDev").onchange = async () => {
@@ -2590,6 +2609,7 @@ function csvDetail(){
 $("btnStat").onclick = async () => {
   statMonth = curMonth;
   $("sLabel").textContent = ymLabel(statMonth);
+  bringFront("stat");
   $("stat").classList.remove("hidden");
   window.scrollTo(0,0);
   await loadStat();
@@ -2669,11 +2689,11 @@ function acctEditForm(u){
 }
 
 function drawAccounts(){
-  const 그룹 = [["catering","케이터링"], ["vendor","도급사(KTS)"]];
+  const 그룹 = [["catering","케이터링","acct-cat"], ["vendor","도급사(KTS)","acct-ven"]];
   let h = "";
-  그룹.forEach(([org, label]) => {
+  그룹.forEach(([org, label, cls]) => {
     const list = ACCTS.filter(u => u.org === org);
-    h += `<div class="acct-grp">${label} ${list.length}명</div>`;
+    h += `<section class="acct-sec ${cls}"><div class="acct-grp">${label}<span class="n">${list.length}명</span></div>`;
     h += list.length ? list.map(u => u.id === editingAcct ? acctEditForm(u) : `<div class="acct-row">
         <div>
           <div class="nm">${esc(u.name)}
@@ -2690,6 +2710,7 @@ function drawAccounts(){
         </div>
       </div>`).join("")
       : `<p class="note">등록된 계정이 없습니다.</p>`;
+    h += `</section>`;
   });
   $("acctBody").innerHTML = h;
 
@@ -3347,6 +3368,7 @@ async function backupDelete(){
 
 $("btnAcct").onclick = async () => {
   editingAcct = null; editingCat = null; catDraft = null;
+  bringFront("acct");
   $("acct").classList.remove("hidden");
   window.scrollTo(0,0);
   await loadAccounts();
