@@ -163,6 +163,20 @@ main{max-width:860px; margin:0 auto; padding:14px 14px 96px;
 .aldevs{width:100%; border-collapse:collapse; font-size:13px}
 .aldevs td{border-top:1px solid var(--line); padding:8px 4px}
 .push-n{font-size:12px; font-weight:700}
+/* 요청 내용 편집기 · 서식 본문 (표·그림) */
+.rtb{display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px}
+.rtb button{border:1px solid var(--line); background:#fff; border-radius:7px; padding:5px 10px; font-size:12.5px; color:var(--ink)}
+.rtb button:hover{background:#eef1f6}
+.rt-hint{font-size:12px; color:var(--muted); margin-left:auto}
+.rt-ed{min-height:150px; border:1px solid var(--line); border-radius:9px; padding:10px 12px; background:#fff;
+  font-size:15px; line-height:1.6; overflow:auto; outline:none}
+.rt-ed:focus{border-color:var(--brand)}
+.rt-ed:empty:before{content:attr(data-placeholder); color:#a0a7b3}
+.rich table{border-collapse:collapse; margin:6px 0; max-width:100%; font-size:13px}
+.rich td,.rich th{border:1px solid #c9cfd8; padding:3px 7px; vertical-align:top}
+.rich th{background:#f3f5f8; font-weight:700}
+.rich img{max-width:100%; height:auto; display:block; margin:8px 0; border-radius:8px; border:1px solid var(--line); cursor:zoom-in}
+.detail-body.rich{white-space:normal; overflow-x:auto}
 /* 비밀번호 변경 창 */
 .pwmodal .field{margin-bottom:10px}
 .pwmodal .field input{width:100%}
@@ -929,7 +943,16 @@ icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
       <div class="field"><label for="wFdate">해당 일자</label><input id="wFdate" type="date"></div>
     </div>
     <div class="field"><label for="wDue" id="wDueLab">이행 기한</label><input id="wDue" type="datetime-local"></div>
-    <div class="field"><label for="wBody">요청 내용</label><textarea id="wBody"></textarea></div>
+    <div class="field"><label for="wBody">요청 내용</label>
+      <div class="rtb" id="wTb">
+        <button type="button" data-cmd="bold" title="굵게"><b>굵게</b></button>
+        <button type="button" data-cmd="underline" title="밑줄"><u>밑줄</u></button>
+        <button type="button" data-cmd="red" title="빨간 글자"><span style="color:#c2352b;font-weight:700">강조</span></button>
+        <button type="button" data-cmd="clear" title="서식 지우기">서식 지우기</button>
+        <span class="rt-hint">캡처·엑셀 표를 Ctrl+V 로 그대로 붙일 수 있습니다</span>
+      </div>
+      <div class="rich rt-ed" id="wBody" contenteditable="true" data-placeholder="요청 내용을 적어주세요"></div>
+    </div>
 
     <div class="field">
       <label for="aNew">첨부파일</label>
@@ -1621,8 +1644,9 @@ async function loadList(){
     const or = [`post_id.in.(${ids.join(",")})`];
     if(rIds.length) or.push(`report_id.in.(${rIds.join(",")})`);
     if(cIds.length) or.push(`comment_id.in.(${cIds.join(",")})`);
-    at = await fetchAll(() => sb.from("attachments").select("id,post_id,report_id,comment_id")
+    at = await fetchAll(() => sb.from("attachments").select("id,post_id,report_id,comment_id,kind")
       .or(or.join(",")).order("id"));
+    at.data = (at.data || []).filter(a => a.kind !== "inline");
   }
   COMMENTS = cm.data || []; REPORTS = rp.data || [];
 
@@ -2161,7 +2185,7 @@ function attPickerHtml(inputId, label){
       <input type="file" id="${inputId}" multiple>
     </div>
     <div class="att-queue" id="${inputId}Q"></div>
-    <p class="att-hint">${label} · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB · 파일 선택을 여러 번 눌러 하나씩 추가할 수 있습니다 (사진은 자동으로 용량을 줄여 올립니다)</p>`;
+    <p class="att-hint">${label} · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB · 파일 선택을 여러 번 눌러 하나씩 추가할 수 있습니다 · 캡처는 글 칸에 Ctrl+V 로 붙이면 첨부됩니다 (사진은 자동으로 용량을 줄여 올립니다)</p>`;
 }
 
 /* ============================================================
@@ -2230,6 +2254,220 @@ function bindPicker(id){
   attQDraw(id);
 }
 
+/* ============================================================
+   붙여넣기 (Ctrl+V)
+   · 캡처·그림을 붙이면 → 첨부 큐에 자동 추가 (본문에는 글만 들어간다)
+   · 엑셀 표를 붙이면 → 칸을 " | " 로 구분한 글로 바꿔 넣는다 (탭·빈 칸이 뭉개지지 않게)
+   ============================================================ */
+const PASTE_BOUND = new WeakSet();
+function bindPaste(taId, qId){
+  const ta = $(taId);
+  if(!ta || PASTE_BOUND.has(ta)) return;
+  PASTE_BOUND.add(ta);
+  ta.addEventListener("paste", e => {
+    const cd = e.clipboardData; if(!cd) return;
+
+    // (1) 그림 → 첨부
+    const imgs = Array.from(cd.items || []).filter(it => it.kind === "file" && /^image\//.test(it.type));
+    if(imgs.length){
+      e.preventDefault();
+      const q = attQ(qId); let added = 0;
+      imgs.forEach(it => {
+        const b = it.getAsFile(); if(!b) return;
+        if(q.length >= ATT_MAX_CNT) return;
+        const d = new Date(), st = `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+        q.push(new File([b], `캡처_${st}.${extOf(b.name || "x.png")}`, {type: b.type})); added++;
+      });
+      attQDraw(qId);
+      toast(added ? `캡처 ${added}장을 첨부에 추가했습니다 (저장하면 함께 올라갑니다)`
+                  : `첨부는 한 번에 ${ATT_MAX_CNT}개까지입니다`, !added);
+      return;
+    }
+
+    // (2) 엑셀 표 → 글
+    const html = cd.getData("text/html") || "", plain = cd.getData("text/plain") || "";
+    let rows = null;
+    if(/<table/i.test(html)){
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      rows = Array.from(doc.querySelectorAll("tr")).map(tr =>
+        Array.from(tr.querySelectorAll("th,td")).map(td => td.textContent.replace(/\s+/g, " ").trim()));
+    } else if(/\t/.test(plain) && plain.includes("\n")){
+      rows = plain.replace(/\r/g, "").split("\n").filter(l => l.trim()).map(l => l.split("\t").map(c => c.trim()));
+    }
+    if(!rows || !rows.length) return;                 // 일반 글은 브라우저 기본 동작
+    e.preventDefault();
+    const lines = rows.map(r => { while(r.length && !r[r.length-1]) r.pop(); return r.join(" | "); })
+                      .filter(l => l.trim());
+    const txt = lines.join("\n");
+    const a = ta.selectionStart, b = ta.selectionEnd;
+    ta.setRangeText(txt, a, b, "end");
+    ta.dispatchEvent(new Event("input", {bubbles:true}));
+  });
+}
+
+/* ============================================================
+   서식 본문 (요청 내용) — 표·굵게·그림을 담는다
+   · 저장 형식 : 서식이 있으면  <div data-rich="1">…</div>  / 글만 있으면 예전처럼 순수 글
+   · 그림은 본문에 넣지 않고 스토리지에 올린 뒤 <img data-path="파일경로"> 로만 가리킨다
+     (첨부 표에는 kind='inline' 으로 남겨 저장공간 정리 대상에 포함되되, 첨부 목록에는 안 보인다)
+   · 화면에 뿌릴 때는 반드시 sanitizeHtml() 을 거친다 — 허용한 태그·속성·스타일만 남긴다 (XSS 방지)
+   ============================================================ */
+const RICH_MARK = '<div data-rich="1">';
+const isRich = v => typeof v === "string" && v.startsWith(RICH_MARK);
+const ALLOW_TAGS = new Set(["DIV","P","BR","B","STRONG","I","EM","U","S","STRIKE","SPAN","FONT","UL","OL","LI",
+  "TABLE","THEAD","TBODY","TFOOT","TR","TD","TH","COLGROUP","COL","IMG","A","H1","H2","H3","H4","SUP","SUB"]);
+const DROP_TAGS  = new Set(["SCRIPT","STYLE","IFRAME","OBJECT","EMBED","LINK","META","SVG","MATH","FORM","INPUT",
+  "BUTTON","TEXTAREA","SELECT","TEMPLATE","HEAD","TITLE","XML","NOSCRIPT","VIDEO","AUDIO","CANVAS"]);
+const ALLOW_STYLE = /^(color|background|background-color|font-weight|font-style|text-decoration|text-decoration-line|text-align|vertical-align)$/;
+
+function sanitizeHtml(html){
+  const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+  // 엑셀·워드가 <style> 에 넣어 둔 칸 색·굵기(class=xl65 등)를 칸에 직접 옮긴 뒤 <style> 은 버린다
+  const rules = {};
+  doc.querySelectorAll("style").forEach(st => {
+    for(const m of st.textContent.matchAll(/\.([A-Za-z_][\w-]*)\s*\{([^}]*)\}/g)) rules[m[1]] = (rules[m[1]] || "") + m[2] + ";";
+  });
+  if(Object.keys(rules).length) doc.body.querySelectorAll("[class]").forEach(el => {
+    const from = Array.from(el.classList).map(c => rules[c] || "").join("");
+    if(from) el.setAttribute("style", from + (el.getAttribute("style") || ""));   // 인라인 스타일이 우선
+  });
+  const walk = node => {
+    for(const ch of Array.from(node.childNodes)){
+      if(ch.nodeType === 8){ ch.remove(); continue; }
+      if(ch.nodeType !== 1) continue;
+      const tag = ch.tagName.toUpperCase();
+      if(DROP_TAGS.has(tag)){ ch.remove(); continue; }
+      walk(ch);
+      if(!ALLOW_TAGS.has(tag)){ ch.replaceWith(...Array.from(ch.childNodes)); continue; }
+      for(const a of Array.from(ch.attributes)){
+        const n = a.name.toLowerCase(), v = a.value; let keep = false;
+        if(n === "style"){
+          const decl = v.split(";").map(d => d.trim()).filter(d => d.includes(":")).map(d => {
+            const i = d.indexOf(":"); return [d.slice(0, i).trim().toLowerCase(), d.slice(i + 1).trim()]; })
+            .filter(([k, val]) => ALLOW_STYLE.test(k) && !/url\(|expression|javascript|@import/i.test(val) && val.length < 60);
+          if(decl.length){ ch.setAttribute("style", decl.map(([k, val]) => `${k}:${val}`).join(";")); keep = true; }
+        }
+        else if((n === "colspan" || n === "rowspan") && (tag === "TD" || tag === "TH")) keep = /^\d{1,3}$/.test(v);
+        else if(n === "data-path" && tag === "IMG") keep = /^[\w.\-]+$/.test(v);
+        else if(n === "data-blob" && tag === "IMG") keep = /^\w+$/.test(v);
+        else if(n === "src" && tag === "IMG") keep = /^blob:/.test(v) && ch.hasAttribute("data-blob");
+        else if(n === "href" && tag === "A") keep = /^https?:\/\//i.test(v);
+        else if(n === "color" && tag === "FONT") keep = /^#?[\w]{1,20}$/.test(v);
+        else if(n === "data-rich" && tag === "DIV") keep = true;
+        if(!keep) ch.removeAttribute(a.name);
+      }
+      if(tag === "A"){ ch.setAttribute("target", "_blank"); ch.setAttribute("rel", "noopener noreferrer"); }
+      if(tag === "IMG" && !ch.hasAttribute("data-path") && !ch.hasAttribute("data-blob")) ch.remove();  // 외부 그림은 버린다
+    }
+  };
+  walk(doc.body);
+  return doc.body.innerHTML;
+}
+
+/* 상세 화면용 본문 HTML */
+function bodyHtml(body){
+  if(!isRich(body)) return esc(body);
+  const doc = new DOMParser().parseFromString(sanitizeHtml(body), "text/html");
+  const wrap = doc.body.querySelector("[data-rich]");
+  return wrap ? wrap.innerHTML : doc.body.innerHTML;
+}
+
+/* <img data-path> 에 60분짜리 주소를 붙인다 (상세 화면 · 수정 화면 공용) */
+async function resolveInlineImages(root){
+  const imgs = Array.from(root.querySelectorAll("img[data-path]"));
+  const paths = [...new Set(imgs.map(i => i.dataset.path))];
+  if(!paths.length) return;
+  const {data} = await sb.storage.from(ATT_BUCKET).createSignedUrls(paths, 3600);
+  const url = {}; (data || []).forEach(d => { if(d.signedUrl) url[d.path] = d.signedUrl; });
+  imgs.forEach(i => {
+    if(url[i.dataset.path]){ i.src = url[i.dataset.path]; i.alt = "첨부 그림"; }
+    else i.alt = "(그림을 불러오지 못했습니다)";
+    if(!i.isContentEditable) i.onclick = () => openAttachment(i.dataset.path, "그림");
+  });
+}
+
+/* ---------- 편집기 ---------- */
+const INLINE_BLOBS = new Map();          // data-blob id → File (저장할 때 올린다)
+const plainToHtml = t => esc(t).replace(/\r?\n/g, "<br>");
+
+function insertHtmlAtCursor(ed, html){
+  ed.focus();
+  if(!document.execCommand("insertHTML", false, html)) ed.insertAdjacentHTML("beforeend", html);
+}
+function editorInsertImage(ed, file){
+  const id = "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  INLINE_BLOBS.set(id, file);
+  insertHtmlAtCursor(ed, `<img src="${URL.createObjectURL(file)}" data-blob="${id}"><br>`);
+}
+function bindRichEditor(ed){
+  ed.addEventListener("paste", e => {
+    const cd = e.clipboardData; if(!cd) return;
+    e.preventDefault();
+    const imgs = Array.from(cd.items || []).filter(it => it.kind === "file" && /^image\//.test(it.type));
+    if(imgs.length){ imgs.forEach(it => { const f = it.getAsFile(); if(f) editorInsertImage(ed, f); }); return; }
+    const html = cd.getData("text/html");
+    if(html && /<(table|b|strong|u|i|em|span|font|p|div|br|ul|ol|li|h\d)\b/i.test(html))
+      insertHtmlAtCursor(ed, sanitizeHtml(html));
+    else insertHtmlAtCursor(ed, plainToHtml(cd.getData("text/plain") || ""));
+  });
+  ed.addEventListener("drop", e => {                       // 파일을 끌어다 놓아도 그림으로
+    const fs = Array.from(e.dataTransfer?.files || []).filter(f => /^image\//.test(f.type));
+    if(fs.length){ e.preventDefault(); fs.forEach(f => editorInsertImage(ed, f)); }
+  });
+}
+$("wTb").querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => {
+  const ed = $("wBody"); ed.focus();
+  const c = b.dataset.cmd;
+  if(c === "red") document.execCommand("foreColor", false, "#c2352b");
+  else if(c === "clear") document.execCommand("removeFormat");
+  else document.execCommand(c);
+});
+bindRichEditor($("wBody"));
+
+/* 편집기 채우기 / 비우기 */
+async function setEditorBody(body){
+  const ed = $("wBody"); INLINE_BLOBS.clear();
+  ed.innerHTML = isRich(body) ? bodyHtml(body) : plainToHtml(body || "");
+  if(isRich(body)) await resolveInlineImages(ed);
+}
+const editorHasContent = () => { const ed = $("wBody"); return !!(ed.textContent.trim() || ed.querySelector("img,table")); };
+
+/* 서식 없는 HTML → 줄바꿈을 살린 순수 글 (편집기가 숨겨져 있어도 동작하게 innerText 를 쓰지 않는다) */
+function htmlToPlain(html){
+  // 블록 끝 → 줄바꿈, 블록 시작 → 앞에 줄바꿈이 없을 때만 줄바꿈 (한 줄이 두 줄로 벌어지지 않게)
+  let t = String(html)
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(div|p|li|tr|h\d)>/gi, "\n")
+    .replace(/<(div|p|li|tr|h\d)\b[^>]*>/gi, "\u0001")
+    .replace(/<[^>]+>/g, "");
+  t = t.replace(/\n\s*\u0001/g, "\n").replace(/^\u0001/, "").replace(/\u0001/g, "\n");
+  const ta = document.createElement("textarea"); ta.innerHTML = t;
+  return ta.value.replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* 저장용 본문 만들기 — 그림을 먼저 올리고 경로로 바꾼다. {body, images:[{path,name,mime}]} */
+async function buildEditorBody(){
+  const ed = $("wBody");
+  const doc = new DOMParser().parseFromString(sanitizeHtml(ed.innerHTML), "text/html");
+  const images = [];
+  for(const img of Array.from(doc.body.querySelectorAll("img[data-blob]"))){
+    const raw = INLINE_BLOBS.get(img.dataset.blob);
+    if(!raw){ img.remove(); continue; }
+    const f = await shrinkImage(raw);
+    if(f.size > ATT_MAX_MB * 1024 * 1024) throw new Error(`그림 1장이 ${ATT_MAX_MB}MB 를 넘습니다. 작게 잘라 다시 붙여주세요.`);
+    const path = randPath(extOf(f.name || "x.jpg"));
+    const up = await sb.storage.from(ATT_BUCKET).upload(path, f, {contentType: f.type || "image/jpeg"});
+    if(up.error) throw new Error("그림을 올리지 못했습니다: " + up.error.message);
+    img.removeAttribute("src"); img.removeAttribute("data-blob"); img.setAttribute("data-path", path);
+    images.push({path, name: raw.name && raw.name !== "image.png" ? raw.name : `본문그림_${path}`, mime: f.type || "image/jpeg"});
+  }
+  const html = doc.body.innerHTML.trim();
+  // 서식·표·그림이 없으면 예전처럼 글로 저장한다 (검색·통계·이력이 그대로 동작)
+  const richy = /<(img|table|b|strong|u|s|strike|i|em|span|font|ul|ol|h\d|a)\b/i.test(html) || /style=/i.test(html);
+  const body = richy ? RICH_MARK + html + "</div>" : htmlToPlain(html);
+  return {body, images};
+}
+
 /* 첨부 링크·삭제 버튼 연결 (drawDetail 이후 호출) */
 function bindAttEvents(root){
   root.querySelectorAll("[data-att]").forEach(el => el.onclick = e => {
@@ -2286,8 +2524,9 @@ async function loadStat(){
     const rIds = STAT_REPS.map(r => r.id);
     const or = [`post_id.in.(${ids.join(",")})`];
     if(rIds.length) or.push(`report_id.in.(${rIds.join(",")})`);
-    const at = await fetchAll(() => sb.from("attachments").select("id,post_id,report_id,comment_id")
+    const at = await fetchAll(() => sb.from("attachments").select("id,post_id,report_id,comment_id,kind")
       .or(or.join(",")).order("id"));
+    at.data = (at.data || []).filter(a => a.kind !== "inline");
     (at.data || []).forEach(a => {
       const pid = a.post_id || byReport[a.report_id];
       if(pid && ids.includes(pid)) STAT_ATT[pid] = (STAT_ATT[pid] || 0) + 1;
@@ -3591,8 +3830,8 @@ function drawDetail(comments, reports){
           dirOf(p) === "c2v" ? cat.owner_vendor : cat.owner_catering))}</dd>` : ""}
       ${p.reject_reason ? `<dt>반려 사유</dt><dd>${esc(p.reject_reason)}</dd>` : ""}
     </dl>
-    <div class="detail-body">${esc(p.body)}</div>
-    ${attListHtml(ATTS.filter(a => a.post_id))}
+    <div class="detail-body${isRich(p.body) ? " rich" : ""}">${bodyHtml(p.body)}</div>
+    ${attListHtml(ATTS.filter(a => a.post_id && a.kind !== "inline"))}
     ${isRequester(p) ? `<div style="margin-top:12px">${attPickerHtml("aPost","요청 첨부 추가")}
       <button class="btn btn-sm" id="aPostUp" style="margin-top:6px">첨부 올리기</button></div>` : ""}
   </div>`;
@@ -3737,6 +3976,8 @@ function drawDetail(comments, reports){
   if($("aPostUp")) $("aPostUp").onclick = uploadPostAtt;
   $("cSave").onclick = saveComment;
   bindAttEvents($("dBody"));
+  bindPaste("rCmt", "aRep"); bindPaste("cBody", "aCmt");
+  resolveInlineImages($("dBody"));
 }
 
 /* 결재자가 들어오면 대기 건을 바로 알린다 — 로그인당 1회 */
@@ -4073,7 +4314,7 @@ const toLocalInput = ts => {
 function openWrite(p){
   editingId = p ? p.id : null;
   $("wTitle").value = p ? (p.title || "") : "";
-  $("wBody").value  = p ? (p.body  || "") : "";
+  setEditorBody(p ? (p.body || "") : "");
   $("wCat").value   = p && p.category_id ? String(p.category_id) : ($("wCat").options[0]?.value || "");
   $("wUrg").value   = p ? p.urgency : "normal";
   $("wFlt").value   = p ? (p.flight_no || "") : "";
@@ -4098,7 +4339,7 @@ function openWrite(p){
   $("wSave").textContent = p ? "수정 저장" : "등록";
   $("aNewHint").textContent = p
     ? `여기서 고른 파일은 기존 첨부에 추가됩니다 · 최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB`
-    : `최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB (사진은 자동으로 용량을 줄여 올립니다)`;
+    : `최대 ${ATT_MAX_CNT}개, 1개당 ${ATT_MAX_MB}MB · 캡처는 요청 내용 칸에 Ctrl+V 로 붙이면 첨부됩니다 (사진은 자동으로 용량을 줄여 올립니다)`;
 
   $("write").classList.remove("hidden");
   window.scrollTo(0,0);
@@ -4125,11 +4366,21 @@ $("dEdit").onclick  = () => {
 $("wBack").onclick = $("wCancel").onclick = () => $("write").classList.add("hidden");
 
 $("wSave").onclick = async () => {
-  const title = $("wTitle").value.trim(), body = $("wBody").value.trim();
-  if(!title || !body){ $("wErr").textContent = "제목과 요청 내용은 필수입니다."; return; }
+  const title = $("wTitle").value.trim();
+  if(!title || !editorHasContent()){ $("wErr").textContent = "제목과 요청 내용은 필수입니다."; return; }
   if(!$("wCat").value){ $("wErr").textContent = "방을 선택해주세요."; $("wCat").focus(); return; }
 
   const 수정 = editingId !== null;
+  $("wSave").disabled = true; $("wErr").textContent = "";
+  let body, 본문그림;
+  try{
+    $("wSave").textContent = "그림 올리는 중…";
+    ({body, images: 본문그림} = await buildEditorBody());
+  }catch(e){
+    $("wSave").disabled = false; $("wSave").textContent = 수정 ? "수정 저장" : "등록";
+    $("wErr").textContent = e.message; return;
+  }
+  $("wSave").disabled = false;
   // 승인된 글의 제목·요청 내용을 바꾸면 DB 가 자동으로 재결재(결재 대기)로 돌린다 — 미리 알린다
   if(수정 && currentPost && currentPost.id === editingId && currentPost.approval === "approved"
      && (title !== (currentPost.title || "").trim() || body !== (currentPost.body || "").trim())
@@ -4162,6 +4413,10 @@ $("wSave").onclick = async () => {
     $("wSave").disabled = false; $("wSave").textContent = 원래라벨;
     $("wErr").textContent = (수정 ? "수정하지 못했습니다: " : "등록하지 못했습니다: ") + error.message;
     return;
+  }
+  if(본문그림.length){                 // 본문 그림을 첨부 표에도 남긴다 (저장공간 정리 대상 · 목록에는 안 보임)
+    await sb.from("attachments").insert(본문그림.map(g => ({post_id: data.id, kind: "inline",
+      file_name: g.name, file_path: g.path, mime_type: g.mime, uploader_id: me.id})));
   }
   if(attQ("aNew").length){
     $("wSave").textContent = "첨부 올리는 중…";
