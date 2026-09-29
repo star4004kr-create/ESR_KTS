@@ -878,28 +878,11 @@ const IDLE_LIMIT_MIN = 30;
   <div class="box" id="acctBody"></div>
 
   <div class="box">
-    <div class="box-head"><h4>방 관리</h4>
-      <button class="btn btn-sm" id="catAdd">＋ 새 방</button></div>
-    <div id="catEdit"></div>
-    <div id="catBody"></div>
-    <p class="note" style="margin:10px 0 0">
-      보관한 방은 새 업무 요청에서 고를 수 없지만, 그 방의 기존 글은 그대로 남습니다.
-      쓰던 방은 지우지 말고 보관해주세요.<br>
-      담당자를 지정하면 그 방의 요청 메일이 그 사람들에게만 갑니다. 비워두면 상대편 전원에게 갑니다.<br>
-      보관한 방은 삭제할 수 있습니다. 방만 지워지고 글은 '방 없음' 으로 남아 전체 목록에서 볼 수 있습니다.</p>
-  </div>
-
-  <div class="box">
-    <div class="box-head"><h4>저장공간</h4>
-      <button class="btn btn-sm" id="stRefresh">사용량 확인</button></div>
-    <div id="stBody"><p class="note">사용량 확인을 누르면 조회합니다.</p></div>
-  </div>
-
-  <div class="box">
-    <h4>신규 계정 만들기</h4>
+    <div class="box-head"><h4>신규 계정 만들기</h4>
+      <a class="btn btn-sm" href="https://supabase.com/dashboard/project/xgkuyyqxeijropmqrpfk/sql/new" target="_blank" rel="noopener">SQL Editor 열기 ↗</a></div>
     <p class="note" style="margin:0 0 12px">
-      로그인 계정 생성은 보안상 브라우저에서 할 수 없습니다.
-      아래에 입력하면 <b>실행할 SQL을 만들어 드립니다</b>. 복사해서 Supabase SQL Editor에 붙여넣고 Run 하세요.</p>
+      계정은 보안상 이 화면에서 바로 만들 수 없습니다 (관리자 키가 필요한 작업).
+      아래에 명단을 넣고 <b>SQL 만들기 → 복사 → SQL Editor 에 붙여넣고 Run</b> 하면 계정이 만들어집니다. 초기 비밀번호는 전원 <b>kts1234</b> 이며 첫 로그인 때 바꾸게 됩니다.</p>
     <div class="field">
       <label for="nList">명단 — 한 줄에 한 명씩</label>
       <textarea id="nList" style="min-height:150px; font-family:ui-monospace,Consolas,monospace; font-size:13px"
@@ -922,6 +905,25 @@ icnkts_abc, 박도급, 도급사, 일반, 주임, abc@gmail.com"></textarea>
              border:1px solid var(--line); border-radius:8px; background:var(--paper);
              font-family:ui-monospace,Consolas,monospace; font-size:12.5px"></textarea>
   </div>
+
+  <div class="box">
+    <div class="box-head"><h4>방 관리</h4>
+      <button class="btn btn-sm" id="catAdd">＋ 새 방</button></div>
+    <div id="catEdit"></div>
+    <div id="catBody"></div>
+    <p class="note" style="margin:10px 0 0">
+      보관한 방은 새 업무 요청에서 고를 수 없지만, 그 방의 기존 글은 그대로 남습니다.
+      쓰던 방은 지우지 말고 보관해주세요.<br>
+      담당자를 지정하면 그 방의 요청 메일이 그 사람들에게만 갑니다. 비워두면 상대편 전원에게 갑니다.<br>
+      보관한 방은 삭제할 수 있습니다. 방만 지워지고 글은 '방 없음' 으로 남아 전체 목록에서 볼 수 있습니다.</p>
+  </div>
+
+  <div class="box">
+    <div class="box-head"><h4>저장공간</h4>
+      <button class="btn btn-sm" id="stRefresh">사용량 확인</button></div>
+    <div id="stBody"><p class="note">사용량 확인을 누르면 조회합니다.</p></div>
+  </div>
+
 </div></div>
 
 <!-- ============ 글쓰기 ============ -->
@@ -2875,6 +2877,10 @@ async function loadAccounts(){
     return;
   }
   ACCTS = data || [];
+  // 로그인 아이디 (auth.users 에 있어 관리자 전용 함수로 읽는다. 17번 SQL 이 없으면 표시만 생략)
+  LOGIN_ID = {};
+  const ids = await sb.rpc("admin_login_ids");
+  if(!ids.error) (ids.data || []).forEach(r => LOGIN_ID[r.id] = r.login_id);
   // 사람별 알림 켠 기기 수 (알림 기능 SQL 이 없으면 조용히 건너뛴다)
   PUSH_N = {};
   const ps = await fetchAll(() => sb.from("push_subs").select("user_id,ua").order("id"));
@@ -2885,7 +2891,7 @@ async function loadAccounts(){
   PUSH_READY = !ps.error;
   drawAccounts();
 }
-let PUSH_N = {}, PUSH_READY = false;
+let PUSH_N = {}, PUSH_READY = false, LOGIN_ID = {};
 const pushBadge = u => {
   if(!PUSH_READY) return "";
   const k = PUSH_N[u.id];
@@ -2939,7 +2945,7 @@ function drawAccounts(){
             ${u.role === "admin" ? `<span class="tag tag-adm">관리자</span>` : ""}
             ${u.active === false ? `<span class="tag tag-off">사용중지</span>` : ""}
           </div>
-          <div class="sub">${esc(u.position || "직책 없음")}
+          <div class="sub">${LOGIN_ID[u.id] ? `아이디 <b>${esc(LOGIN_ID[u.id])}</b> · ` : ""}${esc(u.position || "직책 없음")}
             ${u.email ? ` · <b>${esc(u.email)}</b>` : ""}${pushBadge(u)}</div>
         </div>
         <div class="actions">
